@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.SecurityTradeMapper">
+ <select id="findAll" resultType="com.family.asset.dto.SecurityTrade">SELECT * FROM security_trade ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.SecurityTrade">SELECT * FROM security_trade WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.SecurityTrade" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO security_trade (account_id, external_id, trade_date, trade_type, symbol, currency_code, quantity, amount, exchange_rate, entry_id) VALUES (#{accountId}, #{externalId}, #{tradeDate}, #{tradeType}, #{symbol}, #{currencyCode}, #{quantity}, #{amount}, #{exchangeRate}, #{entryId})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.SecurityTrade">UPDATE security_trade SET account_id=#{accountId}, external_id=#{externalId}, trade_date=#{tradeDate}, trade_type=#{tradeType}, symbol=#{symbol}, currency_code=#{currencyCode}, quantity=#{quantity}, amount=#{amount}, exchange_rate=#{exchangeRate}, entry_id=#{entryId}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

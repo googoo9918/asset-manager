@@ -1,0 +1,41 @@
+﻿server:
+  address: 127.0.0.1
+  port: ${PORT:8080}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+spring:
+  application:
+    name: asset-manager
+  config:
+    import: optional:file:./application-local.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/asset_manager}
+    username: ${DB_USER:asset_user}
+    password: "${DB_PASSWORD:}"
+    hikari:
+      maximum-pool-size: 5
+  mvc:
+    view:
+      prefix: /WEB-INF/views/
+      suffix: .jsp
+  sql:
+    init:
+      mode: never
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+logging:
+  level:
+    root: INFO
+    com.family.asset: INFO
+  file:
+    name: logs/asset-manager.log
+app:
+  zone: Asia/Seoul
+kis:
+  enabled: false
+  base-url: https://openapi.koreainvestment.com:9443
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.HoldingMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Holding">SELECT * FROM security_holding ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Holding">SELECT * FROM security_holding WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Holding" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO security_holding (account_id, symbol, name, currency_code, quantity, average_price, current_price, value_native, value_krw, exchange_rate) VALUES (#{accountId}, #{symbol}, #{name}, #{currencyCode}, #{quantity}, #{averagePrice}, #{currentPrice}, #{valueNative}, #{valueKrw}, #{exchangeRate})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Holding">UPDATE security_holding SET account_id=#{accountId}, symbol=#{symbol}, name=#{name}, currency_code=#{currencyCode}, quantity=#{quantity}, average_price=#{averagePrice}, current_price=#{currentPrice}, value_native=#{valueNative}, value_krw=#{valueKrw}, exchange_rate=#{exchangeRate}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.OperationMapper">
+ <select id="lock" resultType="long">SELECT 1 FROM pg_advisory_xact_lock(7421901)</select>
+ <update id="changeBalance">UPDATE asset_account SET current_balance_krw=current_balance_krw+#{delta}, deposit_krw=CASE WHEN asset_type='SECURITIES' THEN deposit_krw+#{delta} ELSE deposit_krw END,updated_at=now() WHERE id=#{id}</update>
+ <insert id="effect">INSERT INTO entry_effect(entry_id,account_id,delta) VALUES(#{entryId},#{accountId},#{delta})</insert>
+ <select id="effects" resultType="map">SELECT account_id,delta FROM entry_effect WHERE entry_id=#{id} ORDER BY account_id</select>
+ <insert id="adjustment">INSERT INTO balance_adjustment(account_id,old_balance,new_balance,reason) VALUES(#{accountId},#{oldBalance},#{newBalance},#{reason})</insert>
+ <select id="adjustments" resultType="map">SELECT * FROM balance_adjustment WHERE account_id=#{id} ORDER BY id DESC</select>
+ <insert id="cardPayment">INSERT INTO card_payment(card_id,account_id,payment_date,amount,occurrence_id) VALUES(#{cardId},#{accountId},#{date},#{amount},#{occurrenceId})</insert>
+ <select id="cardPayments" resultType="map">SELECT * FROM card_payment WHERE card_id=#{id} ORDER BY payment_date DESC,id DESC</select>
+ <insert id="repayment">INSERT INTO loan_repayment(loan_id,account_id,payment_date,principal,interest,fee,early,entry_id,occurrence_id) VALUES(#{loanId},#{accountId},#{date},#{principal},#{interest},#{fee},#{early},#{entryId},#{occurrenceId})</insert>
+ <select id="repayments" resultType="map">SELECT * FROM loan_repayment WHERE loan_id=#{id} ORDER BY payment_date,id</select>
+ <insert id="rate">INSERT INTO loan_rate_history(loan_id,effective_date,old_rate,new_rate) VALUES(#{loanId},#{date},#{oldRate},#{newRate})</insert>
+ <select id="rates" resultType="map">SELECT * FROM loan_rate_history WHERE loan_id=#{id} ORDER BY effective_date,id</select>
+ <delete id="clearHoldings">DELETE FROM security_holding WHERE account_id=#{id}</delete>
+ <insert id="snapshot" useGeneratedKeys="true" keyProperty="id">INSERT INTO asset_snapshot(total_assets,total_debts,net_assets,sync_status) VALUES(#{assets},#{debts},#{net},#{syncStatus})</insert>
+ <insert id="snapshotItem">INSERT INTO snapshot_item(snapshot_id,item_type,entity_id,owner_code,asset_type,amount_krw,details) VALUES(#{snapshotId},#{itemType},#{entityId},#{ownerCode},#{assetType},#{amount},CAST(#{details} AS jsonb))</insert>
+ <select id="snapshots" resultType="map">SELECT * FROM asset_snapshot ORDER BY captured_at,id</select>
+ <select id="snapshotItems" resultType="map">SELECT id,snapshot_id,item_type,entity_id,owner_code,asset_type,amount_krw,details::text AS details FROM snapshot_item WHERE snapshot_id=#{id} ORDER BY id</select>
+ <update id="cancelPending">UPDATE planned_occurrence SET state='CANCELLED',updated_at=now() WHERE source_key=#{key} AND state='PENDING'</update>
+</mapper>

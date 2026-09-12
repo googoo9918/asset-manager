@@ -1,0 +1,494 @@
+:root {
+  font-family: "Malgun Gothic", system-ui, sans-serif;
+  font-size: 16px;
+  color: #302D24;
+  background: #FAF8F0;
+  --blue: #9A7211;
+  --line: #E6DFC9;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+aside {
+  width: 210px;
+  position: fixed;
+  inset: 0 auto 0 0;
+  background: #FFE16F;
+  color: #fff;
+  padding: 25px 15px;
+  overflow: auto;
+}
+.brand {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  display: block;
+  padding: 0 8px 22px;
+}
+nav {
+  display: grid;
+  gap: 3px;
+}
+nav a {
+  padding: 9px 12px;
+  color: #403820;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+nav a:hover,
+nav a.active {
+  background: #F5CB47;
+  color: white;
+}
+nav strong {
+  font-size: 0.85rem;
+  color: #6D6040;
+  padding: 17px 12px 4px;
+}
+nav .settings {
+  margin-top: 20px;
+  border-top: 1px solid #D9BC5F;
+  border-radius: 0;
+}
+main {
+  margin-left: 210px;
+  padding: 28px;
+  max-width: 1700px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 25px;
+  flex-wrap: wrap;
+}
+h1 {
+  font-size: 1.6rem;
+  margin: 0;
+}
+h2 {
+  font-size: 1.12rem;
+  margin: 0 0 18px;
+}
+h3 {
+  font-size: 1rem;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  font-size: 0.9rem;
+  border: 1px solid #D4CBB3;
+  border-radius: 5px;
+  padding: 9px;
+  background: white;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover {
+  background: #FFF4C9;
+}
+button.primary,
+#refresh {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+button.danger {
+  color: #a31d37;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+label {
+  font-size: 0.9rem;
+}
+header label {
+  margin-right: 8px;
+}
+.panel {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 22px;
+  margin: 0 0 20px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.metric {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 22px;
+}
+.metric:first-child {
+  border-top: 3px solid var(--blue);
+}
+.metric span {
+  color: #766B51;
+  font-size: 0.9rem;
+}
+.metric b {
+  display: block;
+  font-size: 1.65rem;
+  margin-top: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.toolbar input {
+  min-width: 110px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+th {
+  text-align: left;
+  background: #FCF8E8;
+  color: #6B624D;
+  font-weight: 600;
+  white-space: nowrap;
+}
+td,
+th {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+td.num,
+th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+td button {
+  font-size: 0.82rem;
+  padding: 5px 9px;
+  margin: 2px;
+}
+tr:hover td {
+  background: #FFFCF0;
+}
+.muted,
+.empty {
+  color: #766B51;
+  font-size: 0.9rem;
+}
+.empty {
+  padding: 28px;
+  text-align: center;
+}
+.badge {
+  font-size: 0.82rem;
+  background: #FFF4C9;
+  padding: 4px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.negative {
+  color: #ad2640;
+}
+.positive {
+  color: #9A7211;
+}
+#notice:not(:empty) {
+  background: #FFF0B5;
+  border-radius: 5px;
+  padding: 13px;
+  margin-bottom: 18px;
+}
+#notice.error,
+#modal-error:not(:empty) {
+  background: #fff0f0;
+  color: #9b2036;
+  padding: 12px;
+}
+dialog {
+  width: min(850px, 94vw);
+  max-height: 90vh;
+  border: 0;
+  border-radius: 10px;
+  padding: 24px;
+  color: inherit;
+  box-shadow: 0 20px 90px #162b4a50;
+}
+dialog::backdrop {
+  background: #10203780;
+}
+.dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.dialog-head button {
+  border: 0;
+  font-size: 1.4rem;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field.full {
+  grid-column: 1/-1;
+}
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+}
+.field small {
+  font-size: 0.8rem;
+  color: #766B51;
+}
+.entry-card {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 18px;
+  margin-bottom: 16px;
+  background: #FFFDF5;
+}
+.entry-card h3 {
+  margin-top: 0;
+}
+footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+  margin-top: 20px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 125px;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.88rem;
+  margin: 16px 0;
+}
+.track {
+  height: 10px;
+  background: #F1ECD9;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.track i {
+  height: 100%;
+  display: block;
+  background: var(--blue);
+}
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+}
+.calendar .weekday {
+  padding: 10px;
+  background: #FAF8F0;
+  text-align: center;
+}
+.day {
+  min-height: 125px;
+  padding: 8px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.day.today {
+  background: #FFF4CA;
+}
+.day button {
+  font-size: 0.8rem;
+  white-space: normal;
+  width: 100%;
+  padding: 6px;
+  text-align: left;
+  margin-top: 6px;
+}
+.day .done {
+  color: #56715e;
+  background: #eef7f0;
+}
+.day .cancelled {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 22px;
+}
+.detail-grid dt {
+  color: #766B51;
+  font-size: 0.85rem;
+}
+.detail-grid dd {
+  margin: 7px 0;
+  font-weight: 600;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+}
+.chart {
+  width: 100%;
+  height: 230px;
+}
+.chart text {
+  fill: #766B51;
+  font-size: 12px;
+}
+pre {
+  white-space: pre-wrap;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+a {
+  color: var(--blue);
+}
+@media (max-width: 1000px) {
+  aside {
+    width: 170px;
+  }
+  main {
+    margin-left: 170px;
+    padding: 20px;
+  }
+  .metrics {
+    gap: 10px;
+  }
+  .metric b {
+    font-size: 1.25rem;
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 700px) {
+  aside {
+    position: static;
+    width: auto;
+    padding: 15px;
+  }
+  nav {
+    display: flex;
+    overflow: auto;
+  }
+  nav a {
+    white-space: nowrap;
+  }
+  nav strong {
+    display: none;
+  }
+  .brand {
+    padding-bottom: 10px;
+  }
+  nav .settings {
+    margin: 0;
+    border: 0;
+  }
+  main {
+    margin: 0;
+    padding: 15px;
+  }
+  .metrics,
+  .fields,
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .calendar {
+    min-width: 680px;
+  }
+  .calendar-wrap {
+    overflow: auto;
+  }
+  .metric {
+    padding: 16px;
+  }
+  .columns {
+    display: block;
+  }
+  header > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .field.full {
+    grid-column: auto;
+  }
+}
+
+/* 노란 강조색 위에는 어두운 글자를 사용해 대비를 확보한다. */
+aside, .brand, nav a:hover, nav a.active { color: #302D24; }
+button.primary, #refresh { background: #FFE16F; border-color: #D5B649; color: #302D24; }
+header > div, .segmented { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+/* 비선택 상태는 흐린 회색이지만 클릭과 키보드 접근은 유지한다. */
+.segmented button { background: #EEEDE8; color: #756F60; border-color: #E1DDD1; }
+.segmented button[aria-pressed="true"] { background: #FFE16F; color: #302D24; border-color: #BA941D; font-weight: 700; box-shadow: inset 0 -2px #BA941D; }
+button:focus-visible, a:focus-visible { outline: 3px solid #907014; outline-offset: 3px; }
+dialog { width: min(1380px, 96vw); }
+.bar-row { grid-template-columns: minmax(110px, 1fr) 2fr minmax(190px, 1fr); }
+.track i { background: #E9BF35; }
+.pie-layout { display: flex; align-items: center; gap: 25px; flex-wrap: wrap; }
+.pie-layout svg { width: min(340px, 100%); }
+.pie-layout ul { padding: 0; list-style: none; line-height: 2; }
+.swatch { display: inline-block; width: 13px; height: 13px; border-radius: 3px; margin-right: 9px; }
+@media(max-width:700px) { .bar-row { grid-template-columns: 1fr; gap: 5px; } }
+
+/* 화면 공통: 정렬은 별도 편집 창에서, 금액은 통화별 두 줄로 표시한다. */
+.dual-money { display: inline-flex; flex-direction: column; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dual-money b { font-weight: 600; }
+.dual-money small { color: #766B51; font-size: .78rem; }
+#order-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+#order-list li { display:flex; align-items:center; gap:14px; padding:14px; border:1px solid #E6DFC9; border-radius:12px; background:#FFFCF1; }
+#order-list li.dragging { background:#FFF0B5; box-shadow:0 8px 24px #7E622530; border-color:#B18512; }
+#order-list small { display:block; color:#766B51; margin-top:5px; }
+.drag-handle { touch-action:none; cursor:grab; font-size:1.7rem; padding:1px 12px; background:transparent; border:0; }
+.dragging .drag-handle { cursor:grabbing; }
+.order-number { margin-left:auto; color:#8F7A44; font-variant-numeric:tabular-nums; }
+#question-dialog { width:min(430px,92vw); box-shadow:0 20px 70px #3C321A40; }
+#question-input { display:block; width:100%; margin-top:8px; }
+#chart-tooltip { position:fixed; z-index:10000; pointer-events:none; max-width:min(420px,90vw); padding:11px 15px; background:#3C3423; color:#FFF8DD; border-radius:9px; box-shadow:0 6px 20px #302A2730; font-size:.85rem; white-space:normal; }
+[data-chart-tip]:focus-visible { outline:2px solid #806218; outline-offset:3px; }
+.chart rect:focus { fill:#FFE16F25; }
+.mascot-pair { display:flex; justify-content:center; align-items:end; margin:28px 0 0; }
+.mascot-pair img { max-width:47%; height:auto; }
+.mascot-caption { text-align:center; color:#6D6040; font-size:.8rem; margin:4px 0 0; }
+.pie-layout li .dual-money { vertical-align:middle; margin:5px 0; }
+@media(max-width:700px) { .mascot-pair { display:none; } .mascot-caption { display:none; } }

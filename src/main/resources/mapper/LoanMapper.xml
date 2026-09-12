@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.LoanMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Loan">SELECT * FROM loan ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Loan">SELECT * FROM loan WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Loan" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO loan (loan_name, owner_code, initial_amount, current_balance, interest_rate, maturity_date, repayment_type, payment_day, account_id, status) VALUES (#{loanName}, #{ownerCode}, #{initialAmount}, #{currentBalance}, #{interestRate}, #{maturityDate}, #{repaymentType}, #{paymentDay}, #{accountId}, #{status})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Loan">UPDATE loan SET loan_name=#{loanName}, owner_code=#{ownerCode}, initial_amount=#{initialAmount}, current_balance=#{currentBalance}, interest_rate=#{interestRate}, maturity_date=#{maturityDate}, repayment_type=#{repaymentType}, payment_day=#{paymentDay}, account_id=#{accountId}, status=#{status}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

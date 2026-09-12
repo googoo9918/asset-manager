@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.CardMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Card">SELECT * FROM payment_card ORDER BY display_order, id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Card">SELECT * FROM payment_card WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Card" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO payment_card (card_name, owner_code, card_type, account_id, payment_day, status) VALUES (#{cardName}, #{ownerCode}, #{cardType}, #{accountId}, #{paymentDay}, #{status})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Card">UPDATE payment_card SET card_name=#{cardName}, owner_code=#{ownerCode}, card_type=#{cardType}, account_id=#{accountId}, payment_day=#{paymentDay}, status=#{status}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

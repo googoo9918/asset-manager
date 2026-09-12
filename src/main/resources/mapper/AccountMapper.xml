@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.AccountMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Account">SELECT * FROM asset_account ORDER BY display_order, id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Account">SELECT * FROM asset_account WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Account" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO asset_account (asset_type, owner_code, institution_code, account_name, account_number, current_balance_krw, currency_code, status, kis_linked, start_date, maturity_date, interest_rate, monthly_amount, payment_day, withdrawal_account_id, deposit_krw, deposit_usd, exchange_rate, last_synced_at) VALUES (#{assetType}, #{ownerCode}, #{institutionCode}, #{accountName}, #{accountNumber}, #{currentBalanceKrw}, #{currencyCode}, #{status}, #{kisLinked}, #{startDate}, #{maturityDate}, #{interestRate}, #{monthlyAmount}, #{paymentDay}, #{withdrawalAccountId}, #{depositKrw}, #{depositUsd}, #{exchangeRate}, #{lastSyncedAt})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Account">UPDATE asset_account SET asset_type=#{assetType}, owner_code=#{ownerCode}, institution_code=#{institutionCode}, account_name=#{accountName}, account_number=#{accountNumber}, current_balance_krw=#{currentBalanceKrw}, currency_code=#{currencyCode}, status=#{status}, kis_linked=#{kisLinked}, start_date=#{startDate}, maturity_date=#{maturityDate}, interest_rate=#{interestRate}, monthly_amount=#{monthlyAmount}, payment_day=#{paymentDay}, withdrawal_account_id=#{withdrawalAccountId}, deposit_krw=#{depositKrw}, deposit_usd=#{depositUsd}, exchange_rate=#{exchangeRate}, last_synced_at=#{lastSyncedAt}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

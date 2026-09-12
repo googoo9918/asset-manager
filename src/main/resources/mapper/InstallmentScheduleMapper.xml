@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.InstallmentScheduleMapper">
+ <select id="findAll" resultType="com.family.asset.dto.InstallmentSchedule">SELECT * FROM installment_schedule ORDER BY due_date,id</select>
+ <insert id="insert" useGeneratedKeys="true" keyProperty="id">INSERT INTO installment_schedule(installment_id,due_date,amount,state) VALUES(#{installmentId},#{dueDate},#{amount},#{state})</insert>
+ <update id="update">UPDATE installment_schedule SET state=#{state},occurrence_id=#{occurrenceId},paid_date=#{paidDate} WHERE id=#{id} AND state='PENDING'</update>
+ <update id="cancelPending">UPDATE installment_schedule SET state='CANCELLED' WHERE installment_id=#{installmentId} AND state='PENDING'</update>
+</mapper>

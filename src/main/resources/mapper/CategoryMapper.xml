@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.CategoryMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Category">SELECT * FROM category ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Category">SELECT * FROM category WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Category" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO category (name, transaction_type, parent_id, active, system_code) VALUES (#{name}, #{transactionType}, #{parentId}, #{active}, #{systemCode})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Category">UPDATE category SET name=#{name}, transaction_type=#{transactionType}, parent_id=#{parentId}, active=#{active}, system_code=#{systemCode}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/asset_manager
+    username: asset_user
+    password: "CHANGE_ME"
+kis:
+  enabled: false
+  app-key: ""
+  app-secret: ""

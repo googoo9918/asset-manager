@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.OccurrenceMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Occurrence">SELECT * FROM planned_occurrence ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Occurrence">SELECT * FROM planned_occurrence WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Occurrence" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO planned_occurrence (source_key, due_date, title, plan_type, plan_id, account_id, target_account_id, card_id, loan_id, attribution, amount, category_id, state, actual_date, actual_amount, entry_id) VALUES (#{sourceKey}, #{dueDate}, #{title}, #{planType}, #{planId}, #{accountId}, #{targetAccountId}, #{cardId}, #{loanId}, #{attribution}, #{amount}, #{categoryId}, #{state}, #{actualDate}, #{actualAmount}, #{entryId})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Occurrence">UPDATE planned_occurrence SET source_key=#{sourceKey}, due_date=#{dueDate}, title=#{title}, plan_type=#{planType}, plan_id=#{planId}, account_id=#{accountId}, target_account_id=#{targetAccountId}, card_id=#{cardId}, loan_id=#{loanId}, attribution=#{attribution}, amount=#{amount}, category_id=#{categoryId}, state=#{state}, actual_date=#{actualDate}, actual_amount=#{actualAmount}, entry_id=#{entryId}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

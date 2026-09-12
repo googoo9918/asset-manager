@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.PlanMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Plan">SELECT * FROM recurring_plan ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Plan">SELECT * FROM recurring_plan WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Plan" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO recurring_plan (title, plan_type, repeat_cycle, start_date, end_date, amount, attribution, category_id, account_id, target_account_id, card_id, loan_id, active) VALUES (#{title}, #{planType}, #{repeatCycle}, #{startDate}, #{endDate}, #{amount}, #{attribution}, #{categoryId}, #{accountId}, #{targetAccountId}, #{cardId}, #{loanId}, #{active})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Plan">UPDATE recurring_plan SET title=#{title}, plan_type=#{planType}, repeat_cycle=#{repeatCycle}, start_date=#{startDate}, end_date=#{endDate}, amount=#{amount}, attribution=#{attribution}, category_id=#{categoryId}, account_id=#{accountId}, target_account_id=#{targetAccountId}, card_id=#{cardId}, loan_id=#{loanId}, active=#{active}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.InstallmentMapper">
+ <select id="findAll" resultType="com.family.asset.dto.Installment">SELECT * FROM initial_installment ORDER BY id</select>
+ <select id="findById" parameterType="long" resultType="com.family.asset.dto.Installment">SELECT * FROM initial_installment WHERE id=#{id}</select>
+ <insert id="insert" parameterType="com.family.asset.dto.Installment" useGeneratedKeys="true" keyProperty="id">
+ INSERT INTO initial_installment (card_id, remaining_months, remaining_amount, memo, active, first_payment_date) VALUES (#{cardId}, #{remainingMonths}, #{remainingAmount}, #{memo}, #{active}, #{firstPaymentDate})
+ </insert>
+ <update id="update" parameterType="com.family.asset.dto.Installment">UPDATE initial_installment SET card_id=#{cardId}, remaining_months=#{remainingMonths}, remaining_amount=#{remainingAmount}, memo=#{memo}, active=#{active}, first_payment_date=#{firstPaymentDate}, updated_at=now() WHERE id=#{id}</update>
+</mapper>

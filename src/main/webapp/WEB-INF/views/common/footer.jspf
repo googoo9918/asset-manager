@@ -1,0 +1,31 @@
+<%@ page pageEncoding="UTF-8" %>
+<dialog id="modal">
+    <form id="editor">
+        <div class="dialog-head"><h2 id="modal-title">등록</h2>
+            <button type="button" id="close-modal" aria-label="닫기">×</button>
+        </div>
+        <div id="modal-body"></div>
+        <div id="modal-error" role="alert"></div>
+        <footer>
+            <button type="button" id="cancel-modal">취소</button>
+            <button type="submit" class="primary" id="save-modal">저장</button>
+        </footer>
+    </form>
+</dialog>
+<!-- 편집 모달 위에서도 사용할 수 있는 독립 확인/입력 팝업 -->
+<dialog id="question-dialog" aria-labelledby="question-title">
+    <form method="dialog" id="question-form"><h2 id="question-title">확인</h2>
+        <p id="question-message"></p><label id="question-label" hidden>입력<input id="question-input"
+                                                                                maxlength="100"></label>
+        <footer>
+            <button type="button" id="question-cancel">취소</button>
+            <button type="submit" class="primary">확인</button>
+        </footer>
+    </form>
+</dialog>
+<div id="chart-tooltip" role="tooltip" hidden></div>
+<script src="<c:url value='/js/common/core.js'/>"></script>
+<script src="<c:url value='/js/common/dialogs.js'/>"></script>
+<script src="<c:url value='/js/common/charts.js'/>"></script>
+<script src="<c:url value='/js/common/order.js'/>"></script>
+<script src="<c:url value='/js/common/occurrence-editor.js'/>"></script>

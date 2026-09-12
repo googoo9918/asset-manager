@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 160" role="img" aria-labelledby="title">
+<title id="title">포차코</title>
+<!-- 사이트 장식용으로 직접 그린 벡터. 원본 금융 화면과 독립된 정적 이미지다. -->
+<ellipse cx="70" cy="150" rx="48" ry="7" fill="#D8C477" opacity=".3"/>
+<g stroke="#423A32" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+<path d="M46 119Q31 125 29 139Q33 151 53 141L62 125M89 120Q104 124 109 138Q103 151 87 142L78 126" fill="#FFFDF8"/>
+<path d="M45 93Q30 101 31 118L49 114Q48 139 71 139Q96 138 93 113L108 118Q112 102 92 93Z" fill="#89B99B"/>
+<path d="M50 98Q71 110 90 98" fill="none"/>
+<ellipse cx="32" cy="61" rx="14" ry="32" transform="rotate(19 32 61)" fill="#33302D"/>
+<ellipse cx="109" cy="61" rx="14" ry="32" transform="rotate(-19 109 61)" fill="#33302D"/>
+<path d="M42 31Q38 22 47 21L55 27Q54 16 63 18L69 25Q78 18 83 25Q110 32 110 66Q111 99 70 103Q28 99 30 67Q30 42 42 31Z" fill="#FFFDF8"/>
+<ellipse cx="53" cy="66" rx="3" ry="5" fill="#33302D" stroke="none"/>
+<ellipse cx="87" cy="66" rx="3" ry="5" fill="#33302D" stroke="none"/>
+<ellipse cx="70" cy="79" rx="6" ry="4" fill="#33302D" stroke="none"/>
+<path d="M65 89Q70 94 76 88" fill="none" stroke-width="2"/>
+</g><ellipse cx="43" cy="82" rx="7" ry="3" fill="#EAB9AD" opacity=".7"/><ellipse cx="96" cy="82" rx="7" ry="3" fill="#EAB9AD" opacity=".7"/>
+</svg>
