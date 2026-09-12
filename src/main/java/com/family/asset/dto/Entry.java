@@ -1,4 +1,4 @@
-Dpackage com.family.asset.dto;
+package com.family.asset.dto;
 
 import com.family.asset.enums.*;
 import jakarta.validation.constraints.*;
