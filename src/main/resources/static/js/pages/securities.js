@@ -1,4 +1,4 @@
-// pages/securities.js — 현재 화면의 조회/렌더링. 공통 코드 변경 없이 이 파일에서 관리합니다.
+﻿// pages/securities.js — 현재 화면의 조회/렌더링. 공통 코드 변경 없이 이 파일에서 관리합니다.
 // 컬럼 정의를 통합/계좌 상세에서 공유해 평단가와 수익률 표시 기준이 달라지지 않도록 한다.
 // 수익률은 현지 통화 평가손익 / 매입원가이며 환율 변동 손익은 포함하지 않는다.
 // 통화 변환 기준은 계좌/종목에 저장된 환율이다. KRW 종목의 exchangeRate=1은 KRW→KRW이므로 USD 환율로 쓰지 않는다.
@@ -54,7 +54,7 @@ function portfolioChart(rows, total, layout) {
     angle=next;
     return positive.length===1 ? `<circle cx="160" cy="160" r="135" fill="${color}" ${tipAttrs("조회일 "+today(),p.valueKrw,p.name+" · "+(p.valueUsd===null?"USD 환율 미확인":"USD $"+usdFormat(p.valueUsd)))}></circle>` : `<path d="${d}" fill="${color}" stroke="white" ${tipAttrs("조회일 "+today(),p.valueKrw,p.name+" · "+(p.valueUsd===null?"USD 환율 미확인":"USD $"+usdFormat(p.valueUsd)))}></path>`;
   }).join("");
-  return `<div class="pie-layout"><svg viewBox="0 0 320 320" role="img" aria-label="포트폴리오 비중 원형 차트">${slices}</svg><ul>${positive.map((p,i)=>`<li><span class="swatch" style="background:${palette[i%palette.length]}"></span>${esc(p.name)} · ${dualAmount(p.valueKrw,p.valueUsd,p.currency)} · ${pct(p.valueKrw,denominator)}%</li>`).join("")}</ul></div>`;
+  return `<div class="pie-layout"><svg viewBox="0 0 320 320" role="img" aria-label="포트폴리오 비중 원형 차트">${slices}</svg><div class="pie-legend" role="region" aria-label="종목별 비중 목록, 가로 스크롤" tabindex="0"><ul style="--legend-rows:${Math.min(10,positive.length)}">${positive.map((p,i)=>`<li><span class="swatch" style="background:${palette[i%palette.length]}"></span><div><span class="pie-legend-name">${esc(p.name)}</span><span class="pie-legend-value">${dualAmount(p.valueKrw,p.valueUsd,p.currency)}<span>${pct(p.valueKrw,denominator)}%</span></span></div></li>`).join("")}</ul></div></div>`;
 }
 async function securities() {
   const [holdings, portfolio] = await Promise.all([api("/securities/holdings?owner="+state.owner), api("/securities/portfolio?owner="+state.owner)]);
@@ -104,3 +104,4 @@ async function securityDetail(id) {
 }
 
 async function renderPage() { await securities(); }
+
