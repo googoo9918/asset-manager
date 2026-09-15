@@ -74,6 +74,24 @@ async function runPage(name){
   assert.match(ids.get('calendar').innerHTML,/100,000원/);
  }
  if(name==='securities'){
+  const sortRows=[
+   {symbol:'A',valueKrw:'200',costKrw:'100',valueNative:'200',costNative:'100'},
+   {symbol:'B',valueKrw:'500',costKrw:'450',valueNative:'110',costNative:'100'},
+   {symbol:'C',valueKrw:'90',costKrw:'100',valueNative:'90',costNative:'100'},
+   {symbol:'ZERO',valueKrw:'1',costKrw:'0',valueNative:'1',costNative:'0'},
+   {symbol:'CASH',valueKrw:'1000'}
+  ];
+  sandbox.sortRows=sortRows;
+  for(const [metric,desc,asc] of [
+   ['value','CASH,B,A,C,ZERO','ZERO,C,A,B,CASH'],
+   ['profit','A,B,ZERO,C,CASH','C,ZERO,B,A,CASH'],
+   ['return','A,B,C,ZERO,CASH','C,B,A,ZERO,CASH']
+  ]) {
+   assert.equal(vm.runInContext(`sortPortfolio(sortRows,"${metric}","desc").map(h=>h.symbol).join(",")`,sandbox),desc);
+   assert.equal(vm.runInContext(`sortPortfolio(sortRows,"${metric}","asc").map(h=>h.symbol).join(",")`,sandbox),asc);
+  }
+  ids.get('portfolio-sort-metric').value='profit';ids.get('portfolio-sort-metric').onchange();
+  assert.ok(ids.get('portfolio-table').innerHTML.indexOf('테스트')<ids.get('portfolio-table').innerHTML.indexOf('예수금'));
   await vm.runInContext('securityDetail(3)',sandbox);assert.match(ids.get('security-tab-body').innerHTML,/25.0%/);assert.match(ids.get('security-tab-body').innerHTML,/USD \$40.00/);
   assert.equal(vm.runInContext('usdValue({currencyCode:"KRW",accountId:1},"1350")',sandbox),'1.00000000');
  }

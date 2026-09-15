@@ -16,7 +16,12 @@
                 <button type="button" data-layout="bar">막대</button>
                 <button type="button" data-layout="pie">원형</button>
             </div>
-            <label>비중 정렬 <select id="portfolio-sort">
+            <label>정렬 기준 <select id="portfolio-sort-metric">
+                <option value="value">평가금액 (KRW)</option>
+                <option value="profit">평가손익 (KRW)</option>
+                <option value="return">수익률 (환율 제외)</option>
+            </select></label>
+            <label>정렬 방향 <select id="portfolio-sort">
                 <option value="desc">높은 순</option>
                 <option value="asc">낮은 순</option>
             </select></label></div>

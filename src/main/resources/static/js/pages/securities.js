@@ -27,9 +27,28 @@ function enrichedPortfolio(portfolio,holdings,accounts) {
       priceKrw:div(p.valueKrw,p.quantity),priceUsd:hh.some(h=>h.valueUsd===null)?null:div(sum(hh.map(h=>h.valueUsd)),p.quantity)};
   });
 }
+function sortPortfolio(rows,metric,direction) {
+  const key=h=>{
+    if(metric==="value") return [decimal(h.valueKrw),1n];
+    if(h.symbol==="CASH") return null;
+    if(metric==="profit") return [decimal(h.valueKrw)-decimal(h.costKrw),1n];
+    const cost=decimal(h.costNative??mul(h.averagePrice,h.quantity));
+    if(cost===0n) return null;
+    const profit=decimal(h.valueNative)-cost;
+    return cost<0n?[-profit,-cost]:[profit,cost];
+  };
+  // 수익률은 반올림 전 비율로 비교하고, 값이 없는 예수금/수익률은 항상 마지막에 둔다.
+  return [...rows].sort((a,b)=>{
+    const x=key(a),y=key(b);
+    if(x===null||y===null) return x===y?0:x===null?1:-1;
+    const diff=x[0]*y[1]-y[0]*x[1];
+    return (diff<0n?-1:diff>0n?1:0)*(direction==="asc"?1:-1);
+  });
+}
 /** 같은 종목/통화를 통합한 가중평균과 계좌 단독 조회에서 동일한 컬럼/공식을 사용한다. */
-function holdingTable(rows,total) {
-  return table(["종목 / 코드","원래 통화","수량","평균매입가 KRW / USD","현재가 KRW / USD","매입금액 KRW / USD","평가금액 KRW / USD","평가손익 KRW / USD","수익률 (환율 제외)","비중"],rows.map(h=>{
+function holdingTable(rows,total,sort) {
+  const headers=["종목 / 코드","원래 통화","수량","평균매입가 KRW / USD","현재가 KRW / USD","매입금액 KRW / USD","평가금액 KRW / USD","평가손익 KRW / USD","수익률 (환율 제외)","비중"];
+  let html=table(headers,rows.map(h=>{
     const cash=h.symbol==="CASH", currency=h.currencyCode||h.currency, cost=h.costNative??mul(h.averagePrice,h.quantity), profit=sub(h.valueNative,cost);
     return [esc(h.name)+" / "+esc(h.symbol),currency==="KRW"?"KRW (원)":currency,cash?"—":fmt(h.quantity),
       cash?"—":dualAmount(div(h.costKrw,h.quantity),h.costUsd===null?null:div(h.costUsd,h.quantity),currency),
@@ -37,6 +56,16 @@ function holdingTable(rows,total) {
       dualAmount(h.valueKrw,h.valueUsd,currency),cash?"—":dualAmount(sub(h.valueKrw,h.costKrw),h.valueUsd===null||h.costUsd===null?null:sub(h.valueUsd,h.costUsd),currency),
       cash||decimal(cost)===0n?"—":pct(profit,cost)+"%",pct(h.valueKrw,total)+"%"];
   }));
+  if(sort) for(const [index,metric] of [[6,"value"],[7,"profit"],[8,"return"]]) {
+    const active=sort.metric===metric,ascending=sort.direction==="asc";
+    html=html.replace(`<th>${esc(headers[index])}</th>`,`<th aria-sort="${active?(ascending?"ascending":"descending"):"none"}"><button type="button" data-holding-sort="${metric}" aria-label="${esc(headers[index])} ${active&&!ascending?"낮은":"높은"} 순 정렬">${esc(headers[index])} ${active?(ascending?"▲":"▼"):"↕"}</button></th>`);
+  }
+  return html;
+}
+function bindHoldingSort(container,sort,onChange) {
+  $$(container+" [data-holding-sort]").forEach(b=>b.onclick=()=>{
+    onChange({metric:b.dataset.holdingSort,direction:sort.metric===b.dataset.holdingSort&&sort.direction==="desc"?"asc":"desc"});
+  });
 }
 // 원형 차트의 각도만 Number로 변환한다. 금액 합계와 표의 값은 고정소수점 계산을 유지한다.
 function portfolioChart(rows, total, layout) {
@@ -76,16 +105,25 @@ async function securities() {
   $("#security-search").oninput=draw; draw();
   let layout=preference("portfolio-layout","bar");
   $("#portfolio-sort").value=preference("portfolio-sort","desc");
-  // 내림/오름차순은 평가금액 기준이다. 같은 분모를 쓰는 비중 정렬과 동일하다.
+  $("#portfolio-sort-metric").value=preference("portfolio-sort-metric","value");
   const drawPortfolio=()=>{
     const direction=$("#portfolio-sort").value;
-    const rows=enrichedPortfolio(portfolio,holdings,aa).sort((a,b)=> {const d=decimal(a.valueKrw)-decimal(b.valueKrw);return (d<0n?-1:d>0n?1:0)*(direction==="asc"?1:-1);});
+    const rows=sortPortfolio(enrichedPortfolio(portfolio,holdings,aa),$("#portfolio-sort-metric").value,direction);
     $("#portfolio-chart").innerHTML=portfolioChart(rows,total,layout);
-    $("#portfolio-table").innerHTML=holdingTable(rows,total);
+    const sort={metric:$("#portfolio-sort-metric").value,direction};
+    $("#portfolio-table").innerHTML=holdingTable(rows,total,sort);
+    bindHoldingSort("#portfolio-table",sort,next=>{
+      $("#portfolio-sort-metric").value=next.metric;
+      $("#portfolio-sort").value=next.direction;
+      localStorage.setItem("portfolio-sort-metric",JSON.stringify(next.metric));
+      localStorage.setItem("portfolio-sort",JSON.stringify(next.direction));
+      drawPortfolio();
+    });
     $$("[data-layout]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.layout===layout)));
   };
   $$("[data-layout]").forEach(b=>b.onclick=()=>{layout=b.dataset.layout;localStorage.setItem("portfolio-layout",JSON.stringify(layout));drawPortfolio();});
   $("#portfolio-sort").onchange=()=>{localStorage.setItem("portfolio-sort",JSON.stringify($("#portfolio-sort").value));drawPortfolio();};
+  $("#portfolio-sort-metric").onchange=()=>{localStorage.setItem("portfolio-sort-metric",JSON.stringify($("#portfolio-sort-metric").value));drawPortfolio();};
   drawPortfolio();
   $("#trend-metric").value="SECURITIES";
   $("#trend-metric").closest("select").hidden=true;
@@ -94,10 +132,12 @@ async function securities() {
 // 선택 계좌의 보유종목과 거래내역만 조회한다. 통합 표와 같은 컬럼/수익률 공식을 재사용한다.
 async function securityDetail(id) {
   const a=acc(id), [hh,tt]=await Promise.all([api("/securities/holdings?account="+id),api("/securities/trades?account="+id)]);
+  let holdingSort={metric:"value",direction:"desc"};
   modal(a.accountName, detailGrid({계좌번호:a.accountNumber,소유자:label("OwnerCode",a.ownerCode),"계좌 총평가액":dualText(a.currentBalanceKrw,accountFx(a)?div(a.currentBalanceKrw,accountFx(a)):null),예수금:krw(a.depositKrw)+" / USD $"+usdFormat(a.depositUsd),"기준환율 (1 USD)":krw(a.exchangeRate),"마지막 API 갱신":a.lastSyncedAt||"없음"})+'<div class="tabs segmented" id="security-tabs"></div><div id="security-tab-body"></div>',null);
   const show=t=>{
     $$("#security-tabs button").forEach(b=>b.setAttribute("aria-pressed",String(b.textContent===t)));
-    $("#security-tab-body").innerHTML=t==="보유종목"?holdingTable(hh.map(enrichHolding),a.currentBalanceKrw):table(["날짜","유형","종목","수량","통화","금액"],tt.filter(x=>t!=="배당금"||x.tradeType==="DIVIDEND").map(x=>[x.tradeDate, {BUY:"매수",SELL:"매도",DEPOSIT:"입금",WITHDRAWAL:"출금",DIVIDEND:"배당"}[x.tradeType],esc(x.symbol),fmt(x.quantity),x.currencyCode==="KRW"?"KRW (원)":x.currencyCode,dualAmount(x.currencyCode==="USD"?mul(x.amount,x.exchangeRate):x.amount,x.currencyCode==="USD"?x.amount:(accountFx(a)?div(x.amount,accountFx(a)):null),x.currencyCode)]));
+    $("#security-tab-body").innerHTML=t==="보유종목"?holdingTable(sortPortfolio(hh.map(enrichHolding),holdingSort.metric,holdingSort.direction),a.currentBalanceKrw,holdingSort):table(["날짜","유형","종목","수량","통화","금액"],tt.filter(x=>t!=="배당금"||x.tradeType==="DIVIDEND").map(x=>[x.tradeDate, {BUY:"매수",SELL:"매도",DEPOSIT:"입금",WITHDRAWAL:"출금",DIVIDEND:"배당"}[x.tradeType],esc(x.symbol),fmt(x.quantity),x.currencyCode==="KRW"?"KRW (원)":x.currencyCode,dualAmount(x.currencyCode==="USD"?mul(x.amount,x.exchangeRate):x.amount,x.currencyCode==="USD"?x.amount:(accountFx(a)?div(x.amount,accountFx(a)):null),x.currencyCode)]));
+    if(t==="보유종목") bindHoldingSort("#security-tab-body",holdingSort,next=>{holdingSort=next;show(t);});
   };
   for(const t of ["보유종목","거래내역","배당금"]) $("#security-tabs").append(button(t,()=>show(t)));
   show("보유종목");
