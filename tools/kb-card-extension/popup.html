@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="UTF-8"><title>KB 이용내역 가져오기</title><link rel="stylesheet" href="popup.css"></head>
+<body>
+  <h1>KB 이용내역 가져오기</h1>
+  <label for="code">최초 연결코드 (한 번만 입력)</label><input id="code" type="password" autocomplete="off" spellcheck="false" placeholder="이미 등록했다면 비워두세요">
+  <button id="connect" type="button">현재 로그인된 KB 탭 연결</button>
+  <button id="disconnect" type="button">연결 종료</button>
+  <p id="connection" role="status"></p>
+  <p class="muted">등록 후에는 앱이 실행되면 자동 재연결합니다. KB 로그인이 만료되면 PIN 로그인만 다시 진행해주세요.</p>
+  <details><summary>파일로 직접 가져오기</summary>
+  <p>기존 Chrome에서 로그인하고 카드 한 장의 이용내역을 조회한 뒤 읽어주세요.</p>
+  <button id="read" type="button">현재 조회 화면 읽기</button>
+  <p id="message" role="status"></p>
+  <div id="result" hidden>
+    <label for="table">가져올 표</label><select id="table"></select>
+    <p id="summary"></p>
+    <a id="download">선택한 표를 파일로 저장</a>
+    <p>가계부 → 카드 → KB국민카드 가져오기에서 저장한 파일을 선택해주세요.</p>
+  </div>
+  </details>
+  <p class="muted">현재 표시된 페이지의 표만 읽습니다. PIN·쿠키는 읽지 않으며 외부로 전송하지 않습니다. 다운로드 파일에는 선택한 표의 정보가 포함됩니다.</p>
+  <script src="capture.js"></script><script src="popup.js"></script>
+</body></html>

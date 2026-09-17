@@ -5,6 +5,7 @@
     <section class="panel"><h2>카드</h2>
         <div class="toolbar">
             <button id="new" class="primary">카드 등록</button>
+            <button type="button" id="kb-import">KB국민카드 가져오기</button>
             <button type="button" id="reorder">순서 편집</button>
             <input id="search" aria-label="검색" placeholder="이름 검색"><select id="status" aria-label="상태">
             <option value="ACTIVE">사용중</option>
@@ -22,6 +23,7 @@
 <%@ include file="common/footer.jspf" %>
 <script src="<c:url value='/js/common/card-editor.js'/>"></script>
 <script src="<c:url value='/js/common/entry-editor.js'/>"></script>
+<script src="<c:url value='/js/common/kb-card-import.js'/>"></script>
 <script src="<c:url value='/js/pages/cards.js'/>"></script>
 <script src="<c:url value='/js/common/events.js'/>"></script>
 </body></html>

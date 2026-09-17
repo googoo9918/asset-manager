@@ -1,6 +1,18 @@
-# Gradle cache and generated output (including disposable test databases)
+# Build output (including portable Node.js and disposable test databases)
 /.gradle/
 /build/
+/out/
+
+# Node dependencies and generated browser test reports
+node_modules/
+npm-debug.log*
+playwright-report/
+test-results/
+
+# Local connection settings and collected financial records
+/.local/
+/data/kb-card/
+*.kbcard.json
 
 # Local IDE settings
 /.idea/

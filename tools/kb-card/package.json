@@ -1,0 +1,14 @@
+{
+  "name": "asset-manager-kb-card",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "node --test bridge.test.cjs relay.test.cjs collector.test.cjs extension.test.cjs"
+  },
+  "dependencies": {
+    "csv-parse": "6.1.0",
+    "exceljs": "4.4.0",
+    "playwright": "1.63.0",
+    "ws": "8.18.3"
+  }
+}

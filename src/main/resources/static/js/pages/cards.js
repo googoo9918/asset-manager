@@ -7,6 +7,14 @@ async function cards() {
   pageTemplate();
   $("#reorder").onclick=run(()=>openOrder("CARDS"));
   $("#new").onclick = () => editCard();
+  // JSP and static resources can be temporarily out of sync during a local update.
+  // Keep the card list usable, and resolve the optional import module only when invoked.
+  const kbImportButton = $("#kb-import");
+  if (kbImportButton) kbImportButton.onclick = run(() => {
+    if (typeof openKbImport !== "function")
+      throw new Error("KB 가져오기 파일이 로드되지 않았습니다. 앱 재시작 후 페이지를 새로고침해주세요.");
+    openKbImport();
+  });
   const draw = () => {
     const rows = own(state.cards).filter(
       (c) =>

@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "가계부 · KB국민카드 이용내역 가져오기",
+  "version": "0.2.0",
+  "minimum_chrome_version": "116",
+  "description": "기존 Chrome의 KB 로그인 상태로 로컬 가계부의 조회 도구를 연결합니다.",
+  "permissions": ["activeTab", "scripting", "storage", "alarms"],
+  "host_permissions": ["https://*.kbcard.com/*"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "KB 이용내역 가져오기", "default_popup": "popup.html" }
+}

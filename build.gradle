@@ -24,3 +24,12 @@ dependencies {
 tasks.named('test') { useJUnitPlatform() }
 tasks.named('bootWar') { archiveFileName = 'asset-manager.war' }
 tasks.named('war') { enabled = false }
+
+tasks.register('migrateKbCardImport', JavaExec) {
+    description = 'Create the KB card import identity table in the configured local database.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'tools/ApplyKbMigration.java'
+    workingDir = projectDir
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
