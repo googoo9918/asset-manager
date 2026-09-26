@@ -500,3 +500,12 @@ dialog { width: min(1380px, 96vw); }
 .pie-layout li .dual-money { vertical-align:middle; margin:5px 0; }
 @media(max-width:700px) { .mascot-pair { display:none; } .mascot-caption { display:none; } }
 
+:root{--kb-border:#e5dcc6}
+#kb-benefit-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+.kb-benefit-card,.kb-empty,.kb-benefit-item{border:1px solid var(--kb-border);border-radius:12px;padding:20px;margin:8px 0;background:#fff}
+.kb-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.kb-status{border-radius:20px;padding:5px 12px;background:#fff3cf;font-size:13px}.kb-status.is-done{background:#e4f4e8;color:#246335}
+.kb-metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}.kb-metric-grid span,.kb-metric-grid strong{display:block}.kb-metric-grid span{font-size:13px;color:#746b5b}.kb-metric-grid strong{margin-top:8px;font-size:18px}
+.kb-benefit-card progress{width:100%;height:12px;accent-color:#bb8700}.kb-source-text{white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;background:#faf8f0;padding:16px}
+.kb-import-footer{position:sticky;bottom:0;background:#fffdf6;padding:16px 0;border-top:1px solid var(--kb-border);z-index:1}.kb-import-footer .error:empty{display:none}
+@media(max-width:600px){.kb-metric-grid{grid-template-columns:1fr}.kb-benefit-card{padding:14px}#kb-benefit-board table{font-size:12px}}

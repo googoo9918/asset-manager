@@ -14,6 +14,14 @@
         </select></div>
         <div id="list"></div>
     </section>
+    <section class="panel" aria-labelledby="kb-benefit-title"><h2 id="kb-benefit-title">카드 실적·혜택</h2>
+        <p class="muted">실적이 필요한 카드만 관리합니다. 구간별 조건을 한 번 설정하고 매월 KB 실적과 받은 혜택을 동기화하세요.</p>
+        <div class="toolbar">
+            <label>혜택 기준월 <input type="month" id="kb-benefit-month"></label>
+            <button type="button" id="kb-benefit-new" class="primary">관리 카드 추가</button>
+        </div>
+        <p id="kb-benefit-status" role="status"></p><div id="kb-benefit-board"></div>
+    </section>
     <section class="panel"><h2>카드 사용 추이</h2>
         <p class="muted">선택한 월의 직접 입력한 카드 지출입니다. 카드대금 출금은 중복 집계하지 않습니다.</p><input type="month" id="card-chart-month"
                                                                                   aria-label="카드 사용 조회 월">
@@ -25,5 +33,6 @@
 <script src="<c:url value='/js/common/entry-editor.js'/>"></script>
 <script src="<c:url value='/js/common/kb-card-import.js'/>"></script>
 <script src="<c:url value='/js/pages/cards.js'/>"></script>
+<script src="<c:url value='/js/common/kb-benefits.js'/>"></script>
 <script src="<c:url value='/js/common/events.js'/>"></script>
 </body></html>

@@ -114,6 +114,15 @@ function openKbImport() {
   checkConnection().catch(e=>{if($('#kb-connection')===connectionNode)connectionNode.textContent=e.message;});
   $('#kb-connected-read').onclick=act(async()=>loaded(await api('/kb-card/capture','POST',{})));
   $('#kb-latest').onclick=act(async()=>showCollection(await api('/kb-card/latest')));
+  // The saved collection survives closing this dialog and restarting the app.
+  act(async()=>{
+    try{
+      const result=await api('/kb-card/latest');
+      if($('#kb-connection')===connectionNode)await showCollection(result);
+    }catch(e){
+      if($('#kb-connection')===connectionNode)$('#kb-message').textContent='최근 수집 결과를 불러오지 못했습니다. 저장된 결과가 있다면 ‘최근 수집 결과’를 눌러 다시 시도해주세요.';
+    }
+  })();
   $('#kb-collect').onclick=act(async()=>{
     await api('/kb-card/collect','POST',{});
     for(;;){
@@ -138,7 +147,9 @@ function openKbImport() {
   $('#kb-open').onclick=act(async()=>{ await api('/kb-card/automation-browser','POST',{}); $('#kb-message').textContent='별도 브라우저에서 직접 로그인하고 이용내역을 조회해주세요. PIN은 앱에 저장하지 않습니다.'; });
   $('#kb-close').onclick=act(async()=>{ await api('/kb-card/browser','DELETE'); $('#kb-message').textContent='로그인 브라우저를 종료했습니다.'; });
   async function loaded(result) {
+    $('#kb-mapping').innerHTML='';$('#kb-preview').innerHTML='';preview=null;
     savedMappings=await api('/kb-card/mappings');
+    if($('#kb-connection')!==connectionNode)return;
     receiptRows=result.receipts||[];
     tables=result.tables.filter(t=>t.rows.length>1);
     if(!tables.length) throw new Error('읽을 데이터가 없습니다.');
@@ -150,7 +161,10 @@ function openKbImport() {
     $('#kb-table').onchange=()=>{ $('#kb-header').value=1; mapping(); };
     $('#kb-header').onchange=mapping; mapping();
   }
-  $('#kb-capture').onclick=act(async()=>loaded(await api('/kb-card/capture','POST',{})));
+  $('#kb-capture').onclick=act(async()=>{
+    invalidate();$('#kb-mapping').innerHTML='';
+    await loaded(await api('/kb-card/capture','POST',{}));
+  });
   $('#kb-file').onchange=act(async()=>{
     const file=$('#kb-file').files[0]; if(!file) { $('#kb-message').textContent='파일을 선택해주세요.'; return; }
     if(file.size>5*1024*1024) throw new Error('파일은 5MB 이하여야 합니다.');

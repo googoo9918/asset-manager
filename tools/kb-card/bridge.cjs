@@ -6,6 +6,7 @@ const fs = require('node:fs/promises');
 const readline = require('node:readline');
 const {createRelay}=require('./relay.cjs');
 const {collect}=require('./collector.cjs');
+const {captureBenefits,latestBenefits,syncBenefits}=require('./benefits.cjs');
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 2000;
 function bounded(rows) {
@@ -61,6 +62,7 @@ async function readTables(page) {
 function createBridge(launch = () => chromium.launch({ headless: false, channel: process.env.KB_BROWSER_CHANNEL || 'chrome' })) {
   const relay=createRelay();
   let collection={state:'idle'},collecting=false;
+  let benefitsJob={state:'idle'},benefitsBusy=false;
   let browser, context, latestDownload, downloadError, pending = new Set();
   const watch = page => page.on('download', download => {
     if (!kbUrl(page.url())) return;
@@ -83,8 +85,20 @@ function createBridge(launch = () => chromium.launch({ headless: false, channel:
   return { close, async command(request) {
     switch (request.action) {
       case 'connect': return relay.start();
+      case 'benefits':
+        if(collecting||benefitsBusy)throw new Error('진행 중인 조회가 완료된 후 다시 실행해주세요.');
+        await relay.start();return captureBenefits(relay);
+      case 'benefits-latest': return latestBenefits();
+      case 'benefits-status': return benefitsJob;
+      case 'benefits-sync': {
+        if(collecting||benefitsBusy)throw new Error('진행 중인 조회가 완료된 후 다시 실행해주세요.');
+        await relay.start();benefitsBusy=true;benefitsJob={state:'running',progress:{phase:'connecting',saved:0}};
+        syncBenefits(relay,progress=>benefitsJob={state:'running',progress},{tracking:request.tracking})
+          .then(result=>benefitsJob={state:'done',result}).catch(e=>benefitsJob={state:'failed',message:e.message}).finally(()=>benefitsBusy=false);
+        return benefitsJob;
+      }
       case 'collect': {
-        if(collecting)throw new Error('이미 수집 중입니다. 완료될 때까지 기다려주세요.');
+        if(collecting||benefitsBusy)throw new Error('이미 수집 중입니다. 완료될 때까지 기다려주세요.');
         await relay.start();
         collecting=true;collection={state:'running',progress:{collected:0,receipts:0}};
         (async()=>{

@@ -66,6 +66,7 @@ async function cards() {
   $("#card-chart-month").value=monthNow();
   $("#card-chart-month").onchange=run(drawCardChart);
   await drawCardChart();
+  if(typeof initKbBenefits==='function')await initKbBenefits();
 }
 
 async function renderPage() { await cards(); }

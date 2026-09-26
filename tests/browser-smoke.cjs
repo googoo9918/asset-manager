@@ -8,6 +8,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
   let sortingFixture=false;
   let kbSaved=null;
+  const benefitReports=[];let benefitSync=null,benefitSynced=false;
   let kbPreviewRows=[],kbEntries=[],kbPointMode=false;
   let kbLegacyTemplate=false,kbMissingModule=false;
   const savedMappings=[];let mappingWrites=0;
@@ -32,6 +33,14 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
     const u=new URL(route.request().url());
+    if(u.pathname==='/api/kb-card/benefits/plans'){
+      const plan=route.request().postDataJSON();assert.equal(plan.tiers[0].minimumSpend,'400000');
+      const saved={plan,revision:1};benefitReports.push(saved);return route.fulfill({json:saved});
+    }
+    if(u.pathname==='/api/kb-card/benefits/tracking')return route.fulfill({json:benefitReports.filter(c=>c.plan.effectiveMonth<=u.searchParams.get('month')).map(configuration=>({configuration,month:u.searchParams.get('month'),usage:benefitSynced?{currentSpend:'78900',previousSpend:'400000',complete:true,warnings:[]}:null,appliedTier:benefitSynced?configuration.plan.tiers[0]:null,earnedTier:null,nextTier:benefitSynced?configuration.plan.tiers[0]:null,remainingSpend:benefitSynced?'321100':null,benefits:benefitSynced?configuration.plan.tiers[0].benefits.map(benefit=>({benefit,used:'3000',remaining:'7000',progress:'30'})):[],updatedAt:benefitSynced?'2026-09-22T01:00:00Z':null}))});
+    if(u.pathname==='/api/kb-card/benefits/tracking/sync'){benefitSync={...route.request().postDataJSON(),token:'tracking-test'};return route.fulfill({json:{state:'running'}});}
+    if(u.pathname==='/api/kb-card/benefits/status')return route.fulfill({json:{state:'done',result:{tracking:benefitSync,warnings:[]}}});
+    if(u.pathname==='/api/kb-card/benefits/tracking/apply'){assert.equal(route.request().postDataJSON().token,'tracking-test');benefitSynced=true;return route.fulfill({json:{}});}
     if(u.pathname==='/api/categories'){
       if(route.request().method()==='POST'){
         const body=route.request().postDataJSON(),saved={...body,id:26};kbCategories.push(saved);return route.fulfill({json:saved});
@@ -108,7 +117,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   assert.equal(await page.locator('[data-owner=WIFE]').getAttribute('aria-pressed'),'true');
   await page.locator('[data-owner=JOINT]').click();await page.waitForSelector('#content[aria-busy="false"]');
   await page.locator('[data-layout=pie]').click();assert.equal(await page.locator('#portfolio-chart svg').count(),1);
-  await page.locator('#portfolio-chart [data-chart-tip]').first().focus();assert.equal(await page.locator('#chart-tooltip').isVisible(),true);
+  await page.locator('#portfolio-chart [data-chart-tip]').first().evaluate(el=>el.focus({preventScroll:true}));await page.waitForSelector('#chart-tooltip',{state:'visible'});
   await page.locator('#reorder').click();await page.waitForSelector('#order-list li');
   const original=await page.locator('#order-list li').first().getAttribute('data-order-id');
   await page.locator('#order-list .drag-handle').first().focus();await page.keyboard.press('ArrowDown');
@@ -159,11 +168,61 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   assert.deepEqual(await symbols('#security-tab-body'),['SORT_C','SORT_B','SORT_A']);
   await page.locator('#close-modal').click();
   await page.goto('http://asset.test/cards');await page.waitForSelector('#content[aria-busy="false"]');
+  await page.locator('#kb-benefit-new').click();
+  await page.locator('#benefit-plan-save').click();
+  assert.match(await page.locator('#benefit-plan-error').innerText(),/입력/);assert.equal(benefitReports.length,0);
+  await page.selectOption('#benefit-plan-card','1');await page.locator('#benefit-plan-source').fill('KB Star B카드');
+  await page.locator('[name=tier-min]').fill('400000');await page.locator('[data-plan-add]').click();
+  await page.locator('[name=benefit-name]').fill('식당 할인');await page.locator('[name=benefit-limit]').fill('10000');await page.locator('[name=benefit-source]').fill('스타B_음식점할인');
+  await page.locator('#benefit-plan-save').click();
+  await page.waitForSelector('#modal:not([open])',{state:'attached'});
+  assert.equal(benefitReports.length,1);assert.equal(kbSaved,null);
+  assert.match(await page.locator('#kb-benefit-board').innerText(),/아직 동기화하지/);
+  await page.locator('[data-benefit-sync]').click();await page.waitForFunction(()=>document.querySelector('#kb-benefit-status').textContent.includes('동기화 완료'));
+  assert.equal(kbSaved,null);
+  assert.match(await page.locator('#kb-benefit-board').innerText(),/321,100원/);
+  assert.match(await page.locator('#kb-benefit-board').innerText(),/7,000원/);
+  let manualBenefitTier=null;
+  const tierSaveRoute=route=>{manualBenefitTier=route.request().postDataJSON().tierName;return route.fulfill({json:{}});};
+  await page.route('**/api/kb-card/benefits/tracking/tier',tierSaveRoute);
+  const belowTierRoute=route=>route.fulfill({json:[{
+    configuration:{...benefitReports[0],plan:{...benefitReports[0].plan,tiers:[...benefitReports[0].plan.tiers,...benefitReports[0].plan.tiers]}},
+    month:'2026-09',usage:{currentSpend:'78900',previousSpend:'0',complete:true,warnings:[],received:[
+      {date:'26.09.10',name:'스타B_음식점할인',unit:'KRW',value:'3000'},
+      {date:'26.09.11',name:'다른카드_음식점할인',unit:'KRW',value:'9999'},
+      {date:'26.09.12',name:'스타B_음식점할인',unit:'POINT',value:'8888'}]},
+    tierMode:manualBenefitTier?'MANUAL':'AUTO',selectedTierName:manualBenefitTier,tierRevision:1,
+    appliedTier:manualBenefitTier?benefitReports[0].plan.tiers[0]:null,earnedTier:null,nextTier:benefitReports[0].plan.tiers[0],remainingSpend:'321100',benefits:manualBenefitTier?benefitReports[0].plan.tiers[0].benefits.map(benefit=>({benefit,used:'3000',remaining:'7000',progress:'30'})):[],updatedAt:'2026-09-22T01:00:00Z'
+  }]});
+  await page.route('**/api/kb-card/benefits/tracking?month=*',belowTierRoute);
+  await page.reload();await page.waitForSelector('[data-benefit-edit]');
+  const belowText=await page.locator('#kb-benefit-board').innerText();
+  assert.match(belowText,/이번 달 받은 혜택 · 3,000원/);
+  assert.match(belowText,/스타B_음식점할인/);assert.match(belowText,/확인 필요/);
+  assert.doesNotMatch(belowText,/9,999|8,888|6,000|10,000|이 구간에 설정한 혜택이 없습니다/);
+  assert.equal(await page.locator('#kb-benefit-board progress').count(),0);
+  await page.locator('[data-benefit-tier]').selectOption('0');await page.locator('[data-benefit-tier-save]').click();
+  await page.waitForFunction(()=>document.querySelector('#kb-benefit-board').textContent.includes('직접 지정 · 이번 달만 적용'));
+  assert.match(await page.locator('#kb-benefit-board').innerText(),/7,000원/);
+  assert.equal(await page.locator('#kb-benefit-board progress').getAttribute('value'),'30');
+  await page.reload();await page.waitForSelector('[data-benefit-tier]');
+  assert.match(await page.locator('#kb-benefit-board').innerText(),/직접 지정/);
+  await page.locator('[data-benefit-tier]').selectOption('');await page.locator('[data-benefit-tier-save]').click();
+  await page.waitForFunction(()=>!document.querySelector('#kb-benefit-board').textContent.includes('직접 지정 · 이번 달만 적용'));
+  assert.equal(await page.locator('#kb-benefit-board progress').count(),0);
+  await page.unroute('**/api/kb-card/benefits/tracking/tier',tierSaveRoute);
+  await page.unroute('**/api/kb-card/benefits/tracking?month=*',belowTierRoute);
+  await page.reload();await page.waitForSelector('[data-benefit-edit]');
+  await page.locator('[data-benefit-edit]').click();
+  assert.equal(await page.locator('[name=tier-min]').inputValue(),'400000');
+  assert.equal(await page.locator('[name=benefit-source]').inputValue(),'스타B_음식점할인');
+  await page.locator('#close-modal').click();
   await page.locator('#kb-import').click();
   await page.locator('#modal-body summary').filter({hasText:'연결 설정'}).click();
   await page.locator('#kb-connect').click();
   await page.waitForFunction(()=>document.querySelector('#kb-message').textContent==='Chrome 연결됨');
   assert.equal(await page.locator('#kb-connect').isEnabled(),true);
+  assert.equal(kbSaved,null);
   await page.locator('#kb-existing').click();
   await page.locator('#modal-body summary').filter({hasText:'별도 로그인 창 사용'}).click();
   await page.locator('#kb-open').click();

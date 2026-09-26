@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "node --test bridge.test.cjs relay.test.cjs collector.test.cjs extension.test.cjs"
+    "test": "node --test bridge.test.cjs relay.test.cjs collector.test.cjs extension.test.cjs benefits.test.cjs"
   },
   "dependencies": {
     "csv-parse": "6.1.0",

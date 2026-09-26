@@ -1,6 +1,8 @@
 package com.family.asset.controller;
 
 import com.family.asset.dto.KbImport;
+import com.family.asset.dto.KbBenefit;
+import com.family.asset.dto.KbBenefitPlan;
 import com.family.asset.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -16,6 +18,8 @@ import static com.family.asset.exception.BusinessException.check;
 public class KbImportController {
   private final KbBrowserService browser;
   private final KbImportService importer;
+  private final KbBenefitService benefits;
+  private final KbBenefitPlanService benefitPlans;
   // This feature opens a browser on the server PC. Only the local app may invoke it.
   @ModelAttribute
   void localOnly(HttpServletRequest request) throws UnknownHostException {
@@ -34,6 +38,17 @@ public class KbImportController {
   @PostMapping("/collect") public Object collect() { return browser.call(Map.of("action", "collect")); }
   @GetMapping("/collection") public Object collection() { return browser.call(Map.of("action", "collection")); }
   @GetMapping("/latest") public Object latest() { return browser.latestCollection(); }
+  @PostMapping("/benefits/capture") public Object captureBenefits() { return browser.call(Map.of("action", "benefits")); }
+  @GetMapping("/benefits/latest") public Object latestBenefits() { return browser.call(Map.of("action", "benefits-latest")); }
+  @GetMapping("/benefits/reports") public Object benefitReports(@RequestParam String month) { return benefits.list(month); }
+  @PutMapping("/benefits/reports") public Object saveBenefitReport(@Valid @RequestBody KbBenefit.Report report) { return benefits.save(report); }
+  @PostMapping("/benefits/sync") public Object syncBenefits() { return browser.call(Map.of("action", "benefits-sync")); }
+  @GetMapping("/benefits/status") public Object benefitStatus() { return browser.call(Map.of("action", "benefits-status")); }
+  @GetMapping("/benefits/tracking") public Object tracking(@RequestParam String month) { return benefitPlans.list(month); }
+  @PutMapping("/benefits/plans") public Object plan(@Valid @RequestBody KbBenefitPlan.Plan plan) { return benefitPlans.save(plan); }
+  @PostMapping("/benefits/tracking/sync") public Object trackingSync(@Valid @RequestBody KbBenefitPlan.Sync request) { return benefitPlans.start(request); }
+  @PostMapping("/benefits/tracking/apply") public Object trackingApply(@Valid @RequestBody KbBenefitPlan.Apply request) { return benefitPlans.apply(request.token()); }
+  @PutMapping("/benefits/tracking/tier") public Object trackingTier(@Valid @RequestBody KbBenefitPlan.SetTier request) { return benefitPlans.setTier(request); }
   @PostMapping("/automation-browser") public Object openAutomation() { return browser.call(Map.of("action", "open")); }
   @PostMapping("/capture") public Object capture() { return browser.call(Map.of("action", "capture")); }
   @DeleteMapping("/browser") public Object close() { browser.close(); return Map.of("closed", true); }
