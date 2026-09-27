@@ -500,6 +500,11 @@ dialog { width: min(1380px, 96vw); }
 .pie-layout li .dual-money { vertical-align:middle; margin:5px 0; }
 @media(max-width:700px) { .mascot-pair { display:none; } .mascot-caption { display:none; } }
 
+.change-caption{display:block;color:#746b5b;margin:4px 0}
+.snapshot-changes details{margin-top:12px;padding:12px;border:1px solid #e5dcc6;border-radius:8px}
+.snapshot-changes details summary{cursor:pointer;color:#765600}
+.snapshot-changes td{white-space:nowrap}
+
 :root{--kb-border:#e5dcc6}
 #kb-benefit-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
 .kb-benefit-card,.kb-empty,.kb-benefit-item{border:1px solid var(--kb-border);border-radius:12px;padding:20px;margin:8px 0;background:#fff}

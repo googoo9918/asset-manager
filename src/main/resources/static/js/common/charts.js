@@ -5,6 +5,7 @@ function trendControls() {
 // 소유자에 맞는 증권 스냅샷 상세를 합산한다. 일중 여러 번 저장한 경우 마지막 시점을 사용한다.
 // 차트 좌표의 Number 변환은 그림에만 사용하고 표/합계에는 decimal 기반 금액을 유지한다.
 async function bindTrend() {
+  const owner = state.owner;
   const rows = await api("/snapshots?owner=" + state.owner);
   let requestVersion = 0;
   const container = $("#trend");
@@ -27,20 +28,23 @@ async function bindTrend() {
       const d = new Intl.DateTimeFormat("sv-SE", {
         timeZone: "Asia/Seoul",
       }).format(new Date(r.captured_at));
-      if ((!from || d >= from) && (!to || d <= to)) {
+      {
         const previous = latest.get(d);
         if (!previous || new Date(r.captured_at) > new Date(previous.captured_at) ||
             (r.captured_at === previous.captured_at && Number(r.id) > Number(previous.id))) latest.set(d, r);
       }
     });
-    const values = [...latest].sort(([a], [b]) => a.localeCompare(b));
+    const daily = [...latest].sort(([a], [b]) => a.localeCompare(b));
+    const values = daily.filter(([d]) => (!from || d >= from) && (!to || d <= to));
+    // Keep the preceding recorded day even when it falls outside the displayed range.
+    const predecessors = new Map(daily.map(([, r], i) => [String(r.id), daily[i - 1]]));
     const metric = $("#trend-metric").value;
     let points;
     if (["CASH", "SAVINGS", "SECURITIES"].includes(metric)) {
       points = await Promise.all(
         values.map(async ([date, r]) => {
           const details = await api("/snapshots/" + r.id);
-          const selected=details.filter(d=>d.item_type==="ACCOUNT"&&d.asset_type===metric&&(state.owner==="JOINT"||d.owner_code===state.owner));
+          const selected=details.filter(d=>d.item_type==="ACCOUNT"&&d.asset_type===metric&&(owner==="JOINT"||d.owner_code===owner));
           let dollars=null;
           if(metric==="SECURITIES") {
             const converted=selected.map(d=>{const data=typeof d.details==="string"?JSON.parse(d.details):d.details;
@@ -53,19 +57,136 @@ async function bindTrend() {
         }),
       );
     } else points = values.map(([date, r]) => ({ date, value: r[metric] }));
-    if (version !== requestVersion || $("#trend") !== container) return;
+    if (version !== requestVersion || $("#trend") !== container || owner !== state.owner) return;
+    const priorTotals = new Map(points.map((p, i) => [String(values[i][1].id), p.value]));
+    const firstPrevious = values.length ? predecessors.get(String(values[0][1].id)) : null;
+    if (firstPrevious && !priorTotals.has(String(firstPrevious[1].id))) {
+      const r = firstPrevious[1];
+      priorTotals.set(String(r.id), ["CASH", "SAVINGS", "SECURITIES"].includes(metric)
+        ? snapshotTotal(await api("/snapshots/" + r.id), owner, metric) : r[metric]);
+    }
+    if (version !== requestVersion || $("#trend") !== container || owner !== state.owner) return;
     $("#trend").innerHTML =
       lineChart(points) +
+      '<p class="muted">날짜별 마지막 저장 기록을 비교합니다. 증감액을 누르면 변동 내역을 볼 수 있습니다. 기록이 없는 날은 직전 기록과 비교합니다.</p>' +
       table(
-        ["날짜", "금액 (원)", ...(metric==="SECURITIES"?["USD (당시 환율 환산)"]:[])],
-        points.map((p) => [p.date, krw(p.value), ...(metric==="SECURITIES"?[p.dollars===null?"환율 미확인":"USD $"+usdFormat(p.dollars)]:[])]),
+        ["날짜", "금액 (원)", ...(metric==="SECURITIES"?["USD (당시 환율 환산)"]:[]), "이전 기록 대비", "비교 기준일"],
+        points.map((p, i) => {
+          const previous = predecessors.get(String(values[i][1].id));
+          return [p.date, krw(p.value), ...(metric==="SECURITIES"?[p.dollars===null?"환율 미확인":"USD $"+usdFormat(p.dollars)]:[]),
+            previous ? `<button type="button" data-trend-change="${i}" aria-label="${p.date} 변동 내역">${signedChange(sub(p.value, priorTotals.get(String(previous[1].id))))} · 상세</button>` : "첫 기록",
+            previous ? previous[0] : "—"];
+        }),
       );
+    container.onclick = run(async e => {
+      const button = e.target.closest("[data-trend-change]");
+      if (!button) return;
+      const current = values[Number(button.dataset.trendChange)]?.[1];
+      if (!current) return;
+      const previous = predecessors.get(String(current.id))[1];
+      button.disabled = true;
+      try {
+        const [before, after] = await Promise.all([previous, current].map(r => api("/snapshots/" + r.id)));
+        if (version !== requestVersion || $("#trend") !== container || owner !== state.owner) return;
+        modal("자산 변동 내역", snapshotChangesHtml(before, after, owner, metric, previous, current), null);
+      } finally { button.disabled = false; }
+    });
   };
   $("#trend-go").onclick =
     $("#trend-period").onchange =
     $("#trend-metric").onchange =
       run(draw);
   await draw();
+}
+
+const snapshotMetricNames = {net_assets:"순자산",total_assets:"총자산",total_debts:"총부채",CASH:"현금성 자산",SAVINGS:"적금",SECURITIES:"증권"};
+function signedChange(value) { return (decimal(value) > 0n ? "+" : "") + krw(value); }
+function snapshotData(item) { return typeof item?.details === "string" ? JSON.parse(item.details) : item?.details || {}; }
+function snapshotIncluded(item, owner, metric) {
+  if (owner !== "JOINT" && item.owner_code !== owner) return false;
+  if (item.item_type === "LOAN") return metric === "net_assets" || metric === "total_debts";
+  return item.item_type === "ACCOUNT" && metric !== "total_debts" &&
+    (["net_assets", "total_assets"].includes(metric) || item.asset_type === metric);
+}
+function snapshotAmount(item, metric) {
+  return item.item_type === "LOAN" && metric === "net_assets" ? sub("0", item.amount_krw) : item.amount_krw;
+}
+function snapshotTotal(items, owner, metric) {
+  return sum(items.filter(i => snapshotIncluded(i, owner, metric)).map(i => snapshotAmount(i, metric)));
+}
+// Compare each side independently: owner/type changes are entries/exits for the selected scope.
+// Positions are children of accounts, never added a second time to the asset total.
+function snapshotChanges(before, after, owner, metric) {
+  const rows = new Map();
+  [before, after].forEach((items, side) => items.filter(i => snapshotIncluded(i, owner, metric)).forEach(item => {
+    const key = item.item_type + ":" + item.entity_id;
+    if (!rows.has(key)) rows.set(key, {key, before:"0", after:"0"});
+    const row = rows.get(key);
+    row[side ? "after" : "before"] = item.amount_krw;
+    row[side ? "afterItem" : "beforeItem"] = item;
+  }));
+  const result = [...rows.values()].map(row => {
+    const item = row.afterItem || row.beforeItem, data = snapshotData(item);
+    row.item = item;
+    row.name = data.accountName || data.loanName || "이름 없는 항목";
+    row.change = sub(row.after, row.before);
+    row.contribution = item.item_type === "LOAN" && metric === "net_assets" ? sub("0", row.change) : row.change;
+    row.status = !row.beforeItem ? "비교 범위에 추가" : !row.afterItem ? "비교 범위에서 제외" : "잔액 변동";
+    row.children = [];
+    if (item.item_type === "ACCOUNT" && [row.beforeItem, row.afterItem].some(i => i?.asset_type === "SECURITIES")) {
+      const positions = new Map();
+      [before, after].forEach((items, side) => {
+        if (!row[side ? "afterItem" : "beforeItem"]) return;
+        items.filter(i => i.item_type === "POSITION" && (owner === "JOINT" || i.owner_code === owner)).forEach(i => {
+          const d = snapshotData(i);
+          if (!eq(d.accountId, item.entity_id)) return;
+          const key = JSON.stringify([d.symbol, d.currencyCode]);
+          if (!positions.has(key)) positions.set(key, {name:d.name || d.symbol, symbol:d.symbol, before:"0", after:"0"});
+          const p = positions.get(key);
+          p[side ? "after" : "before"] = sum([p[side ? "after" : "before"], i.amount_krw]);
+          p[side ? "afterData" : "beforeData"] = d;
+        });
+      });
+      row.children = [...positions.values()].map(p => ({...p, change:sub(p.after, p.before)}));
+      const residualBefore = sub(row.before, sum(row.children.map(p => p.before)));
+      const residualAfter = sub(row.after, sum(row.children.map(p => p.after)));
+      row.children.push({name:"예수금·기타 잔액 (계좌 합계 − 보유종목)",before:residualBefore,after:residualAfter,change:sub(residualAfter,residualBefore)});
+      if (row.beforeItem && row.afterItem) row.status = "계좌 평가액 변동";
+    }
+    return row;
+  });
+  result.sort((a,b) => {
+    const abs = v => decimal(v) < 0n ? -decimal(v) : decimal(v);
+    return abs(a.contribution) > abs(b.contribution) ? -1 : abs(a.contribution) < abs(b.contribution) ? 1 : a.key.localeCompare(b.key);
+  });
+  return {before:snapshotTotal(before,owner,metric),after:snapshotTotal(after,owner,metric),
+    change:sum(result.map(r => r.contribution)),rows:result};
+}
+function snapshotChangesHtml(before, after, owner, metric, from, to) {
+  const comparison = snapshotChanges(before, after, owner, metric);
+  const time = r => new Date(r.captured_at).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
+  const changed = comparison.rows.filter(r => decimal(r.change) !== 0n || r.children.some(p => decimal(p.change) !== 0n));
+  const positionInfo = p => {
+    const text = d => d ? `${fmt(d.quantity)}주 · ${money(d.currentPrice,d.currencyCode)} · 환율 ${fmt(d.exchangeRate)}` : "미보유";
+    return p.symbol ? `${esc(p.symbol)}<br>${esc(text(p.beforeData))} → ${esc(text(p.afterData))}` : "계좌 총액에서 종목 평가액을 뺀 나머지";
+  };
+  return '<div class="snapshot-changes">' + detailGrid({"비교 시작":time(from),"비교 종료":time(to),"소유자":label("OwnerCode",owner),"지표":snapshotMetricNames[metric],
+    "이전 금액":krw(comparison.before),"이후 금액":krw(comparison.after),"총 변동":signedChange(comparison.change)}) +
+    '<p>저장 당시 잔액·평가액 기준입니다. 입출금 사유와 주가·환율별 영향은 이 비교만으로 확정하지 않습니다.</p>' +
+    (metric === "net_assets" ? '<p>대출 잔액이 줄면 순자산에는 증가로 반영됩니다.</p>' : "") +
+    `<p>갱신 결과: ${esc(from.sync_status || "—")} → ${esc(to.sync_status || "—")}</p>` +
+    (changed.length ? table(["항목 / 세부 내역","유형 / 소유자","이전 잔액","이후 잔액","잔액 증감",snapshotMetricNames[metric]+" 반영액"],changed.map(r => {
+      const oldName = snapshotData(r.beforeItem).accountName || snapshotData(r.beforeItem).loanName;
+      const owners = [r.beforeItem?.owner_code,r.afterItem?.owner_code].filter(Boolean);
+      return [`${esc(r.name)}${oldName && oldName !== r.name ? '<br>이전 이름: '+esc(oldName) : ""}<small class="change-caption">${esc(r.status)}</small>`,
+        esc(r.item.item_type === "LOAN" ? "대출" : label("AssetType",r.item.asset_type))+" / "+esc([...new Set(owners)].map(o=>label("OwnerCode",o)).join(" → ")),
+        krw(r.before),krw(r.after),signedChange(r.change),signedChange(r.contribution)];
+    })) : '<p class="empty">이 기간에 금액 변동이 없습니다.</p>') +
+    `<p><strong>항목별 반영액 합계: ${signedChange(comparison.change)}</strong></p>` +
+    changed.map(r => {
+      const children = r.children.filter(p => decimal(p.change) !== 0n);
+      return children.length ? `<details><summary>${esc(r.name)} · 종목·예수금 변동 ${children.length}건</summary>${table(["항목","이전","이후","증감","수량 · 가격 · 환율 (이전 → 이후)"],children.map(p => [esc(p.name),krw(p.before),krw(p.after),signedChange(p.change),positionInfo(p)]))}<p>세부 내역은 위 계좌 금액에 포함됩니다.</p></details>` : "";
+    }).join("") + '<p class="muted">금액은 원 단위로 반올림하여 표시합니다.</p></div>';
 }
 
 /** 금액은 문자열로 보존하고 SVG 좌표만 Number로 변환한다. */

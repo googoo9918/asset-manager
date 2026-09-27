@@ -9,26 +9,13 @@ async function snapshots() {
   $("#snapshot-list").innerHTML=table(["저장 시각","총자산","총부채","순자산","갱신 결과","상세"],[...rows].reverse().map(r=>[esc(new Date(r.captured_at).toLocaleString("ko-KR")),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),esc(r.sync_status),action("snapshot-detail",r.id,"상세")]));
   $("#compare").onclick = run(async () => {
     if (!rows.length) return;
-    const data = await api(
-      "/snapshots/compare?" +
-        new URLSearchParams({
-          from: $("#snap-before").value,
-          to: $("#snap-after").value,
-          owner: state.owner,
-        }),
-    );
-    $("#comparison").innerHTML = table(
-      ["항목", "이전", "이후", "변화 (원)"],
-      data.map((r) => {
-        const d = JSON.parse(r.details);
-        return [
-          esc(d.accountName || d.loanName || d.name),
-          krw(r.before),
-          krw(r.after),
-          krw(r.change),
-        ];
-      }),
-    );
+    const owner = state.owner, container = $("#comparison");
+    const from = rows.find(r => eq(r.id, $("#snap-before").value));
+    const to = rows.find(r => eq(r.id, $("#snap-after").value));
+    const [before, after] = await Promise.all([from, to].map(r => api("/snapshots/" + r.id)));
+    if (owner !== state.owner || container !== $("#comparison") ||
+        !eq(from.id, $("#snap-before").value) || !eq(to.id, $("#snap-after").value)) return;
+    container.innerHTML = snapshotChangesHtml(before, after, owner, "net_assets", from, to);
   });
   await bindTrend();
 }
