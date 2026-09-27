@@ -87,6 +87,14 @@ async function runPage(name){
   assert.equal(grouped.filter(o=>o.state==='COMPLETED').length,1);
  }
  if(name==='securities'){
+  assert.equal(vm.runInContext('dailyPercent("2.345")',sandbox),'+2.35%');
+  assert.equal(vm.runInContext('dailyPercent("-0.005")',sandbox),'-0.01%');
+  assert.equal(vm.runInContext('dailyPercent("0")',sandbox),'0.00%');
+  assert.match(vm.runInContext('dailyPriceCell({symbol:"TEST",dailyReturn:null})',sandbox),/미수집/);
+  sandbox.dailyFixture=[{owner_code:'HUSBAND',details:JSON.stringify({symbol:'TEST',name:'테스트',accountId:3,accountName:'과거 계좌명',exchangeCode:'NAS',currencyCode:'USD',priceDate:'2026-09-25',previousPriceDate:'2026-09-24',previousClose:'100',dayPrice:'102.5',dailyReturn:'2.5',priceFetchedAt:'2026-09-26T07:00:00+09:00'})}];
+  assert.match(vm.runInContext('dailyPriceTable(dailyPriceRows(dailyFixture,"test"))',sandbox),/\+2.50%/);
+  assert.match(vm.runInContext('dailyPriceTable(dailyPriceRows(dailyFixture))',sandbox),/과거 계좌명/);
+  assert.equal(vm.runInContext('dailyPriceRows(dailyFixture,"none").length',sandbox),0);
   const sortRows=[
    {symbol:'A',valueKrw:'200',costKrw:'100',valueNative:'200',costNative:'100'},
    {symbol:'B',valueKrw:'500',costKrw:'450',valueNative:'110',costNative:'100'},

@@ -74,6 +74,8 @@ document.addEventListener(
         return confirmOccurrence(id);
       case "security-detail":
         return securityDetail(id);
+      case "daily-price-history":
+        return dailyPriceHistory(id);
       case "snapshot-detail":
         return snapshotDetail(id);
       case "installment-edit":

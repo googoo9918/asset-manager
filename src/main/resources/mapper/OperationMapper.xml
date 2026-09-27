@@ -25,4 +25,17 @@
  <select id="snapshots" resultType="map">SELECT * FROM asset_snapshot ORDER BY captured_at,id</select>
  <select id="snapshotItems" resultType="map">SELECT id,snapshot_id,item_type,entity_id,owner_code,asset_type,amount_krw,details::text AS details FROM snapshot_item WHERE snapshot_id=#{id} ORDER BY id</select>
  <update id="cancelPending">UPDATE planned_occurrence SET state='CANCELLED',updated_at=now() WHERE source_key=#{key} AND state='PENDING'</update>
+ <select id="dailyPrices" resultType="map">
+ SELECT * FROM (
+   SELECT DISTINCT ON (i.owner_code, i.details-&gt;&gt;'accountId', i.details-&gt;&gt;'symbol', i.details-&gt;&gt;'currencyCode', i.details-&gt;&gt;'priceDate')
+     i.owner_code, i.details::text AS details, s.captured_at, s.id AS snapshot_id
+   FROM snapshot_item i JOIN asset_snapshot s ON s.id=i.snapshot_id
+   WHERE i.item_type='POSITION' AND i.details-&gt;&gt;'dailyReturn' IS NOT NULL
+     AND i.details-&gt;&gt;'priceDate' BETWEEN #{from} AND #{to}
+   <if test="owner != 'JOINT'">AND i.owner_code=#{owner}</if>
+   <if test="account != null">AND i.details-&gt;&gt;'accountId'=#{account}</if>
+   ORDER BY i.owner_code, i.details-&gt;&gt;'accountId', i.details-&gt;&gt;'symbol', i.details-&gt;&gt;'currencyCode', i.details-&gt;&gt;'priceDate',
+     i.details-&gt;&gt;'priceFetchedAt' DESC, s.captured_at DESC, s.id DESC, i.id DESC
+ ) history ORDER BY details::jsonb-&gt;&gt;'priceDate' DESC, details::jsonb-&gt;&gt;'symbol', details::jsonb-&gt;&gt;'accountId'
+ </select>
 </mapper>

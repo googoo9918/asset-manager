@@ -31,4 +31,14 @@ public class Holding {
   private BigDecimal valueKrw;
 
   private BigDecimal exchangeRate;
+
+  private String exchangeCode;
+  // Snapshot label: survives account renaming/closure without looking up current metadata.
+  private String accountName;
+  private LocalDate priceDate;
+  private LocalDate previousPriceDate;
+  private BigDecimal previousClose;
+  private BigDecimal dayPrice;
+  private BigDecimal dailyReturn;
+  private OffsetDateTime priceFetchedAt;
 }

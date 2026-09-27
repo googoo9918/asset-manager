@@ -141,6 +141,12 @@ public class FinanceController {
     return query.trades(account);
   }
 
+  @GetMapping("/securities/daily-prices")
+  public Object dailyPrices(@RequestParam(defaultValue = "JOINT") String owner,
+      @RequestParam LocalDate from, @RequestParam LocalDate to, @RequestParam(required=false) Long account) {
+    return snapshots.dailyPrices(owner,from,to,account);
+  }
+
   @GetMapping("/securities/portfolio")
   public Object portfolio(@RequestParam(defaultValue = "JOINT") String owner) {
     return query.portfolio(owner);

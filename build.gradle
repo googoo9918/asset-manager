@@ -25,6 +25,15 @@ tasks.named('test') { useJUnitPlatform() }
 tasks.named('bootWar') { archiveFileName = 'asset-manager.war' }
 tasks.named('war') { enabled = false }
 
+tasks.register('migrateDailyPrice', JavaExec) {
+    description = 'Add daily stock price fields; historical snapshots preserve the collected quotes.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'tools/ApplyDailyPriceMigration.java'
+    workingDir = projectDir
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+
 tasks.register('migrateAccountCardPayment', JavaExec) {
     description = 'Add account-level card payment history links without changing balances.'
     group = 'application'

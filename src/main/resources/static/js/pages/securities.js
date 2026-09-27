@@ -23,7 +23,8 @@ function enrichedPortfolio(portfolio,holdings,accounts) {
   return portfolio.map(p=>{
     if(p.symbol==="CASH") return {...p,valueUsd:nullableSum(accounts.map(a=>accountFx(a)?sum([div(a.depositKrw,accountFx(a)),a.depositUsd]):null))};
     const hh=holdings.filter(h=>h.symbol===p.symbol&&h.currencyCode===p.currency).map(enrichHolding);
-    return {...p,costKrw:sum(hh.map(h=>h.costKrw)),costUsd:nullableSum(hh.map(h=>h.costUsd)),valueUsd:nullableSum(hh.map(h=>h.valueUsd)),
+    const quote=hh.filter(h=>h.dailyReturn!=null).sort((a,b)=>(b.priceFetchedAt||"").localeCompare(a.priceFetchedAt||""))[0];
+    return {...p,dailyReturn:quote?.dailyReturn,priceDate:quote?.priceDate,priceFetchedAt:quote?.priceFetchedAt,exchangeCode:quote?.exchangeCode,costKrw:sum(hh.map(h=>h.costKrw)),costUsd:nullableSum(hh.map(h=>h.costUsd)),valueUsd:nullableSum(hh.map(h=>h.valueUsd)),
       priceKrw:div(p.valueKrw,p.quantity),priceUsd:hh.some(h=>h.valueUsd===null)?null:div(sum(hh.map(h=>h.valueUsd)),p.quantity)};
   });
 }
@@ -47,14 +48,15 @@ function sortPortfolio(rows,metric,direction) {
 }
 /** 같은 종목/통화를 통합한 가중평균과 계좌 단독 조회에서 동일한 컬럼/공식을 사용한다. */
 function holdingTable(rows,total,sort) {
-  const headers=["종목 / 코드","원래 통화","수량","평균매입가 KRW / USD","현재가 KRW / USD","매입금액 KRW / USD","평가금액 KRW / USD","평가손익 KRW / USD","수익률 (환율 제외)","비중"];
+  const headers=["종목 / 코드","원래 통화","수량","평균매입가 KRW / USD","현재가 KRW / USD","매입금액 KRW / USD","평가금액 KRW / USD","평가손익 KRW / USD","수익률 (환율 제외)","비중","당일 등락률 (시세일 기준)"];
   let html=table(headers,rows.map(h=>{
     const cash=h.symbol==="CASH", currency=h.currencyCode||h.currency, cost=h.costNative??mul(h.averagePrice,h.quantity), profit=sub(h.valueNative,cost);
     return [esc(h.name)+" / "+esc(h.symbol),currency==="KRW"?"KRW (원)":currency,cash?"—":fmt(h.quantity),
       cash?"—":dualAmount(div(h.costKrw,h.quantity),h.costUsd===null?null:div(h.costUsd,h.quantity),currency),
       cash?"—":dualAmount(h.priceKrw,h.priceUsd,currency),cash?"—":dualAmount(h.costKrw,h.costUsd,currency),
       dualAmount(h.valueKrw,h.valueUsd,currency),cash?"—":dualAmount(sub(h.valueKrw,h.costKrw),h.valueUsd===null||h.costUsd===null?null:sub(h.valueUsd,h.costUsd),currency),
-      cash||decimal(cost)===0n?"—":pct(profit,cost)+"%",pct(h.valueKrw,total)+"%"];
+      cash||decimal(cost)===0n?"—":pct(profit,cost)+"%",pct(h.valueKrw,total)+"%",
+      cash?"—":dailyPriceCell(h)];
   }));
   if(sort) for(const [index,metric] of [[6,"value"],[7,"profit"],[8,"return"]]) {
     const active=sort.metric===metric,ascending=sort.direction==="asc";
@@ -128,6 +130,55 @@ async function securities() {
   $("#trend-metric").value="SECURITIES";
   $("#trend-metric").closest("select").hidden=true;
   await bindTrend();
+  await bindDailyPriceHistory();
+}
+
+function dailyPercent(value) {
+  const n=decimal(value),a=n<0n?-n:n,cents=(a+500000n)/1000000n;
+  return (cents===0n?"":n<0n?"-":"+")+(cents/100n)+"."+String(cents%100n).padStart(2,"0")+"%";
+}
+function dailyPriceCell(h) {
+  const detail=h.dailyReturn==null ? '미수집' : `<b>${dailyPercent(h.dailyReturn)}</b><small class="change-caption">${esc(h.priceDate)} · ${esc(h.exchangeCode||"")}<br>조회 ${esc(new Date(h.priceFetchedAt).toLocaleString("ko-KR"))}</small>`;
+  return detail+action("daily-price-history",esc(h.symbol),"이력");
+}
+function dailyPriceRows(rows,query="") {
+  const q=query.trim().toLocaleLowerCase();
+  return rows.map(r=>({...r,h:typeof r.details==="string"?JSON.parse(r.details):r.details}))
+    .filter(r=>!q||[r.h.symbol,r.h.name].some(v=>String(v||"").toLocaleLowerCase().includes(q)));
+}
+function dailyPriceTable(rows) {
+  if(!rows.length)return '<p class="empty">저장된 등락률이 없습니다. KIS 시세 조회에 성공한 뒤 스냅샷을 저장하면 이력이 쌓입니다.</p>';
+  return table(["거래일","종목 / 거래소","계좌 / 소유자","전 거래일","전일 종가","시세일 가격","당일 등락률","시세 조회 시각"],rows.map(({h,owner_code})=>[
+    esc(h.priceDate),esc(h.name||h.symbol)+" / "+esc(h.symbol)+" · "+esc(h.exchangeCode),
+    esc(h.accountName||accName(h.accountId))+" / "+esc(label("OwnerCode",owner_code)),esc(h.previousPriceDate),
+    esc(fmt(h.previousClose)+" "+h.currencyCode),esc(fmt(h.dayPrice)+" "+h.currencyCode),dailyPercent(h.dailyReturn),esc(new Date(h.priceFetchedAt).toLocaleString("ko-KR"))]));
+}
+async function bindDailyPriceHistory() {
+  const owner=state.owner,container=$("#daily-price-history");
+  $("#daily-price-from").value=monthNow()+"-01";$("#daily-price-to").value=today();
+  let rows=[],page=1,version=0;
+  const draw=()=>{
+    const selected=dailyPriceRows(rows,$("#daily-price-symbol").value),pages=Math.max(1,Math.ceil(selected.length/15));
+    page=Math.max(1,Math.min(page,pages));container.innerHTML=dailyPriceTable(selected.slice((page-1)*15,page*15));
+    $("#daily-price-page").textContent=`${page} / ${pages} 페이지 · ${selected.length}건`;
+    $("#daily-price-prev").disabled=page===1;$("#daily-price-next").disabled=page===pages;
+  };
+  const load=async()=>{
+    const request=++version,from=$("#daily-price-from").value,to=$("#daily-price-to").value;
+    if(!from||!to||from>to)throw new Error("등락률 조회 시작일과 종료일을 확인해주세요.");
+    const result=await api("/securities/daily-prices?"+new URLSearchParams({owner,from,to}));
+    if(request!==version||owner!==state.owner||container!==$("#daily-price-history"))return;
+    rows=result;page=1;draw();
+  };
+  $("#daily-price-go").onclick=run(load);$("#daily-price-symbol").oninput=()=>{page=1;draw();};
+  $("#daily-price-prev").onclick=()=>{page--;draw();};$("#daily-price-next").onclick=()=>{page++;draw();};
+  await load();
+}
+async function dailyPriceHistory(symbol) {
+  const owner=state.owner,to=today(),d=new Date(to+"T00:00:00Z");d.setUTCDate(d.getUTCDate()-90);
+  const rows=await api("/securities/daily-prices?"+new URLSearchParams({owner,from:d.toISOString().slice(0,10),to}));
+  if(owner!==state.owner)return;
+  modal(symbol+" · 당일 등락률 이력",'<p>최근 90일 · 현지 거래일별 마지막으로 저장된 시세입니다. 장중 가격은 이후 바뀔 수 있습니다.</p>'+dailyPriceTable(dailyPriceRows(rows).filter(r=>r.h.symbol===symbol)),null);
 }
 // 선택 계좌의 보유종목과 거래내역만 조회한다. 통합 표와 같은 컬럼/수익률 공식을 재사용한다.
 async function securityDetail(id) {

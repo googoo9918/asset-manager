@@ -21,6 +21,16 @@ public class SnapshotService {
   private final HoldingMapper holdings;
   private final ObjectMapper json;
 
+  public List<Map<String,Object>> dailyPrices(String owner, java.time.LocalDate from, java.time.LocalDate to, Long account) {
+    check(Set.of("JOINT","HUSBAND","WIFE").contains(owner),"소유자를 확인해주세요.");
+    check(!from.isAfter(to) && java.time.temporal.ChronoUnit.DAYS.between(from,to)<=366,
+        "조회 기간은 시작일 이후 최대 1년으로 지정해주세요.");
+    var filter=new HashMap<String,Object>();
+    filter.put("owner",owner);filter.put("from",from.toString());filter.put("to",to.toString());
+    filter.put("account",account==null?null:account.toString());
+    return ops.dailyPrices(filter);
+  }
+
   public Map<String, Object> capture(String status) {
     ops.lock();
     var sum = query.summary("JOINT");
@@ -39,7 +49,8 @@ public class SnapshotService {
           a);
     for (var l : catalog.loans())
       item(id, "LOAN", l.getId(), l.getOwnerCode().name(), null, l.getCurrentBalance(), l);
-    for (var h : holdings.findAll())
+    for (var h : holdings.findAll()) {
+      h.setAccountName(catalog.account(h.getAccountId()).getAccountName());
       item(
           id,
           "POSITION",
@@ -48,6 +59,7 @@ public class SnapshotService {
           "SECURITIES",
           h.getValueKrw(),
           h);
+    }
     return row;
   }
 

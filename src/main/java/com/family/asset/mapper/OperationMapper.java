@@ -41,6 +41,7 @@ public interface OperationMapper {
   List<Map<String, Object>> snapshots();
 
   List<Map<String, Object>> snapshotItems(Long id);
+  List<Map<String, Object>> dailyPrices(Map<String, Object> filter);
 
   int cancelPending(@Param("key") String key);
 }

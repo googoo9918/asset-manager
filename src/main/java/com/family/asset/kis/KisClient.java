@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -21,6 +22,7 @@ import tools.jackson.databind.*;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class KisClient {
   private static final long MIN_REQUEST_INTERVAL_MILLIS = 150;
   private static final int RATE_LIMIT_RETRIES = 4;
@@ -103,6 +105,11 @@ public class KisClient {
       String tr,
       Map<String, String> params,
       String cursor) {
+    return pages(c,path,tr,params,cursor,false);
+  }
+
+  private List<JsonNode> pages(KisProperties.Credential c, String path, String tr,
+      Map<String,String> params, String cursor, boolean firstPageOnly) {
     List<JsonNode> all = new ArrayList<>();
     String cont = "";
     Set<String> seen = new HashSet<>();
@@ -131,6 +138,7 @@ public class KisClient {
       var body = require(response.getBody(), "KIS 응답");
       check("0".equals(body.path("rt_cd").asText()), "KIS 조회 실패: " + body.path("msg_cd").asText());
       all.add(body);
+      if (firstPageOnly) return all;
       String more = response.getHeaders().getFirst("tr_cont");
       if (!"M".equals(more) && !"F".equals(more)) return all;
       check(cursor != null, "KIS 응답이 단일 조회 범위를 초과했습니다. 기존 상태를 유지합니다.");
@@ -191,6 +199,7 @@ public class KisClient {
             "CTX_AREA_NK100",
             ""));
     List<Holding> hh = new ArrayList<>();
+    Map<String,String> exchanges = new HashMap<>();
     BigDecimal cashKrw = BigDecimal.ZERO;
     for (var body :
         pages(c, "/uapi/domestic-stock/v1/trading/inquire-balance", "TTTC8434R", p, "100")) {
@@ -237,6 +246,7 @@ public class KisClient {
       var rate = number(r, "bass_exrt");
       if (fx == null) fx = rate;
       String symbol = r.path("pdno").asText();
+      exchanges.put(symbol, r.path("ovrs_excg_cd").asText());
       hh.add(
           holding(
               a.getId(),
@@ -252,7 +262,29 @@ public class KisClient {
     if (fx == null) fx = a.getExchangeRate();
     check(fx.signum() > 0, "유효한 API 환율이 없습니다.");
     List<SecurityTrade> tt = fetchTrades(a, c, fx);
+    for (var h : hh) {
+      boolean overseas = "USD".equals(h.getCurrencyCode());
+      h.setExchangeCode(overseas ? quoteExchange(exchanges.get(h.getSymbol())) : "KRX");
+      try {
+        check(h.getExchangeCode()!=null,"지원하지 않는 시세 거래소");
+        var priceRows = overseas
+            ? pages(c,"/uapi/overseas-price/v1/quotations/dailyprice","HHDFS76240000",
+                new LinkedHashMap<>(Map.of("AUTH","","EXCD",h.getExchangeCode(),"SYMB",h.getSymbol(),"GUBN","0","BYMD","","MODP","1")),null,true).getFirst().path("output2")
+            : pages(c,"/uapi/domestic-stock/v1/quotations/inquire-daily-price","FHKST01010400",
+                new LinkedHashMap<>(Map.of("FID_COND_MRKT_DIV_CODE","J","FID_INPUT_ISCD",h.getSymbol(),"FID_PERIOD_DIV_CODE","D","FID_ORG_ADJ_PRC","1")),null,true).getFirst().path("output");
+        DailyPrice.parse(priceRows,overseas).apply(h);
+      } catch (RuntimeException e) {
+        // An optional quote failure must not discard a successfully fetched account balance.
+        log.warn("Daily price unavailable, accountId={}, symbol={}, reason={}",a.getId(),h.getSymbol(),e.getClass().getSimpleName());
+      }
+    }
     return new BrokerState(cashKrw, cashUsd, fx, hh, tt);
+  }
+
+  static String quoteExchange(String code) {
+    if(code==null) return null;
+    return switch(code) {case "NASD", "NAS" -> "NAS"; case "NYSE", "NYS" -> "NYS";
+      case "AMEX", "AMS" -> "AMS"; default -> null;};
   }
 
   private Holding holding(

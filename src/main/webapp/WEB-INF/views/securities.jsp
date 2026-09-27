@@ -29,6 +29,17 @@
         <p class="muted">통합 평단가는 수량 가중평균입니다. 수익률은 환율 손익을 제외합니다.</p>
         <div id="portfolio-table"></div>
     </section>
+    <section class="panel"><h2>종목별 당일 등락률 이력</h2>
+        <p class="muted">전 거래일 종가 대비 시세일 가격의 변화입니다. 현지 거래일 기준이며 수량·매입가·환율은 반영하지 않습니다. 장중 저장값은 최종 종가와 다를 수 있습니다.</p>
+        <div class="toolbar">
+            <input type="date" id="daily-price-from" aria-label="등락률 시작일">
+            <input type="date" id="daily-price-to" aria-label="등락률 종료일">
+            <input id="daily-price-symbol" placeholder="종목명 / 코드 검색" aria-label="등락률 종목 검색">
+            <button type="button" id="daily-price-go">조회</button>
+        </div>
+        <div id="daily-price-history"></div>
+        <div class="toolbar"><button type="button" id="daily-price-prev">이전</button><span id="daily-price-page" role="status"></span><button type="button" id="daily-price-next">다음</button></div>
+    </section>
     <section class="panel"><h2>증권 자산 추이</h2>
         <div id="trend-controls"></div>
         <p class="muted">저장된 스냅샷 기준 · 각 지점에 마우스를 올리거나 키보드로 선택하면 날짜와 금액을 볼 수 있습니다.</p>
