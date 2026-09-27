@@ -14,6 +14,13 @@
             <button id="filter">조회</button>
         </div>
         <div id="entries"></div>
+        <nav class="toolbar" aria-label="거래 내역 페이지">
+            <button type="button" id="entries-first">처음</button>
+            <button type="button" id="entries-prev">이전</button>
+            <span id="entries-page" role="status" aria-live="polite"></span>
+            <button type="button" id="entries-next">다음</button>
+            <button type="button" id="entries-last">마지막</button>
+        </nav>
     </section>
     <section class="panel"><h2>조회 기간 수입 / 지출 추이</h2>
         <div id="income-chart"></div>

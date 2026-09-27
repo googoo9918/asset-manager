@@ -95,6 +95,30 @@ async function runPage(name){
   await vm.runInContext('securityDetail(3)',sandbox);assert.match(ids.get('security-tab-body').innerHTML,/25.0%/);assert.match(ids.get('security-tab-body').innerHTML,/USD \$40.00/);
   assert.equal(vm.runInContext('usdValue({currencyCode:"KRW",accountId:1},"1350")',sandbox),'1.00000000');
  }
+ if(name==='transactions') {
+  let rows=Array.from({length:31},(_,i)=>({...entries[0],id:i+1,memo:`거래-${i+1}`})),requests=0;
+  sandbox.fetch=async url=>({ok:true,status:200,json:async()=>{
+   if(new URL(url,'http://test').pathname==='/api/transactions'){requests++;return rows;}
+   return fixtures(url);
+  }});
+  await ids.get('filter').onclick();
+  const count=()=>[...ids.get('entries').innerHTML.matchAll(/data-action="entry-detail"/g)].length;
+  assert.equal(count(),15);assert.match(ids.get('entries-page').textContent,/1 \/ 3 페이지 · 총 31건/);
+  assert.equal(ids.get('entries-prev').disabled,true);
+  const chart=ids.get('expense-chart').innerHTML;assert.match(chart,/31,000원/);
+  ids.get('entries-next').onclick();assert.equal(count(),15);
+  assert.match(ids.get('entries').innerHTML,/거래-16/);assert.doesNotMatch(ids.get('entries').innerHTML,/거래-31/);
+  ids.get('entries-last').onclick();assert.equal(count(),1);assert.match(ids.get('entries').innerHTML,/거래-31/);
+  assert.equal(ids.get('entries-next').disabled,true);assert.equal(requests,1);
+  assert.equal(ids.get('expense-chart').innerHTML,chart);
+  ids.get('entries-prev').onclick();assert.match(ids.get('entries-page').textContent,/2 \/ 3/);
+  ids.get('entries-first').onclick();assert.equal(ids.get('entries-first').disabled,true);
+  ids.get('entries-next').onclick();rows=rows.slice(0,15);await ids.get('filter').onclick();
+  assert.equal(count(),15);assert.match(ids.get('entries-page').textContent,/1 \/ 1/);
+  assert.equal(ids.get('entries-next').disabled,true);
+  rows=[];await ids.get('filter').onclick();assert.equal(count(),0);assert.equal(ids.get('entries-page').textContent,'총 0건');
+  for(const direction of ['first','prev','next','last'])assert.equal(ids.get('entries-'+direction).disabled,true);
+ }
  if(name==='snapshots')await vm.runInContext('snapshotDetail(1)',sandbox);
  assert.equal(vm.runInContext('label("OwnerCode","WIFE")',sandbox),'윱니');
  assert.equal(vm.runInContext('krw("1234.5")',sandbox),'1,235원');

@@ -14,22 +14,44 @@ async function transactions() {
       ),
     );
   $("#entry-buttons").append(button("카테고리 관리", manageCategories));
+  const pageSize = 15, container = $("#entries");
+  let entries = [], currentPage = 1, requestVersion = 0;
+  const drawPage = () => {
+    const pages = Math.max(1, Math.ceil(entries.length / pageSize));
+    currentPage = Math.max(1, Math.min(currentPage, pages));
+    const start = (currentPage - 1) * pageSize;
+    container.innerHTML = entryTable(entries.slice(start, start + pageSize), true);
+    $("#entries-page").textContent = entries.length
+      ? `${currentPage} / ${pages} 페이지 · 총 ${entries.length}건 (${start + 1}–${Math.min(start + pageSize, entries.length)}건)`
+      : "총 0건";
+    $("#entries-first").disabled = $("#entries-prev").disabled = currentPage === 1;
+    $("#entries-next").disabled = $("#entries-last").disabled = currentPage === pages;
+  };
+  $("#entries-first").onclick = () => { currentPage = 1; drawPage(); };
+  $("#entries-prev").onclick = () => { currentPage--; drawPage(); };
+  $("#entries-next").onclick = () => { currentPage++; drawPage(); };
+  $("#entries-last").onclick = () => { currentPage = Math.ceil(entries.length / pageSize); drawPage(); };
   const draw = async () => {
+    const version = ++requestVersion, owner = state.owner;
+    const from = $("#from").value, to = $("#to").value;
     const rows = await api(
         "/transactions?" +
           new URLSearchParams({
-            owner: state.owner,
-            from: $("#from").value,
-            to: $("#to").value,
+            owner,
+            from,
+            to,
             type: $("#type").value,
             category: $("#category").value,
             q: $("#query").value,
             includeVoided: $("#voided").checked,
           }),
       );
-    $("#entries").innerHTML=entryTable(rows,true);
-    $("#income-chart").innerHTML=lineChart(transactionPoints(rows,"INCOME",$("#from").value,$("#to").value),"수입");
-    $("#expense-chart").innerHTML=lineChart(transactionPoints(rows,"EXPENSE",$("#from").value,$("#to").value),"지출");
+    if (version !== requestVersion || container !== $("#entries") || owner !== state.owner) return;
+    entries = rows;
+    currentPage = 1;
+    drawPage();
+    $("#income-chart").innerHTML=lineChart(transactionPoints(rows,"INCOME",from,to),"수입");
+    $("#expense-chart").innerHTML=lineChart(transactionPoints(rows,"EXPENSE",from,to),"지출");
   };
   $("#filter").onclick = run(draw);
   await draw();
