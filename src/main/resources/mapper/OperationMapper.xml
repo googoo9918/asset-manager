@@ -8,7 +8,13 @@
  <insert id="adjustment">INSERT INTO balance_adjustment(account_id,old_balance,new_balance,reason) VALUES(#{accountId},#{oldBalance},#{newBalance},#{reason})</insert>
  <select id="adjustments" resultType="map">SELECT * FROM balance_adjustment WHERE account_id=#{id} ORDER BY id DESC</select>
  <insert id="cardPayment">INSERT INTO card_payment(card_id,account_id,payment_date,amount,occurrence_id) VALUES(#{cardId},#{accountId},#{date},#{amount},#{occurrenceId})</insert>
- <select id="cardPayments" resultType="map">SELECT * FROM card_payment WHERE card_id=#{id} ORDER BY payment_date DESC,id DESC</select>
+ <select id="cardPayments" resultType="map">
+ SELECT id,card_id,account_id,payment_date,amount,occurrence_id,false AS grouped FROM card_payment WHERE card_id=#{id}
+ UNION ALL
+ SELECT g.id,o.card_id,g.account_id,g.actual_date AS payment_date,g.actual_amount AS amount,g.id AS occurrence_id,true AS grouped
+ FROM planned_occurrence o JOIN planned_occurrence g ON g.id=o.payment_group_id WHERE o.card_id=#{id}
+ ORDER BY payment_date DESC,id DESC
+ </select>
  <insert id="repayment">INSERT INTO loan_repayment(loan_id,account_id,payment_date,principal,interest,fee,early,entry_id,occurrence_id) VALUES(#{loanId},#{accountId},#{date},#{principal},#{interest},#{fee},#{early},#{entryId},#{occurrenceId})</insert>
  <select id="repayments" resultType="map">SELECT * FROM loan_repayment WHERE loan_id=#{id} ORDER BY payment_date,id</select>
  <insert id="rate">INSERT INTO loan_rate_history(loan_id,effective_date,old_rate,new_rate) VALUES(#{loanId},#{date},#{oldRate},#{newRate})</insert>

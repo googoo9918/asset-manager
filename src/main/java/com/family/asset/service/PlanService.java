@@ -25,6 +25,82 @@ public class PlanService {
 
   public Occurrence get(Long id) { return require(occurrences.findById(id), "예정 거래"); }
 
+  public List<Occurrence> cardAccountGroup(Long id) {
+    var first = get(id);
+    if (first.getSourceKey().startsWith("CARD_ACCOUNT:"))
+      return occurrences.findAll().stream().filter(o -> Objects.equals(o.getPaymentGroupId(), id)).toList();
+    check(first.getPlanType() == PlanType.CARD_PAYMENT && first.getCardId() != null
+        && "PENDING".equals(first.getState()), "미처리 카드 결제 예정만 묶을 수 있습니다.");
+    return occurrences.findAll().stream().filter(o -> o.getPlanType() == PlanType.CARD_PAYMENT
+        && o.getCardId() != null && "PENDING".equals(o.getState())
+        && Objects.equals(o.getAccountId(), first.getAccountId())
+        && effectiveDate(o).equals(effectiveDate(first))
+        && YearMonth.from(o.getDueDate()).equals(YearMonth.from(first.getDueDate()))).toList();
+  }
+
+  private LocalDate effectiveDate(Occurrence o) {
+    return o.getActualDate() == null ? o.getDueDate() : o.getActualDate();
+  }
+
+  private List<Occurrence> checkedCardGroup(Long accountId, List<Long> ids) {
+    check(ids != null && !ids.isEmpty() && new HashSet<>(ids).size() == ids.size(), "결제 예정 목록을 확인해주세요.");
+    var rows = cardAccountGroup(ids.getFirst());
+    check(!rows.isEmpty() && rows.stream().allMatch(o -> "PENDING".equals(o.getState())), "이미 처리된 카드 결제입니다.");
+    check(new HashSet<>(rows.stream().map(Occurrence::getId).toList()).equals(new HashSet<>(ids)),
+        "결제 예정 목록이 변경되었습니다. 다시 조회해주세요.");
+    catalog.activeAccount(accountId);
+    for (var o : rows) {
+      var c = catalog.card(o.getCardId());
+      check(Objects.equals(o.getAccountId(), accountId) && Objects.equals(c.getAccountId(), accountId)
+          && c.getCardType() == CardType.CREDIT && c.getStatus() == AssetStatus.ACTIVE,
+          "카드 결제계좌가 변경되었거나 비활성 상태입니다. 다시 조회해주세요.");
+    }
+    return rows;
+  }
+
+  public Occurrence confirmCardAccount(Commands.AccountCardPayment r) {
+    ops.lock();
+    var rows = checkedCardGroup(r.accountId(), r.occurrenceIds());
+    var total = rows.stream().map(o -> installmentService.total(o.getCardId(), YearMonth.from(o.getDueDate())))
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+    check(r.amount().signum() > 0 && InstallmentService.coversTotal(r.amount(), total),
+        "실제 총 출금액은 포함된 카드의 할부 합계 이상이어야 합니다. 원 단위 합계: "
+            + total.setScale(0, java.math.RoundingMode.HALF_UP).toPlainString() + "원");
+    var account = catalog.account(r.accountId());
+    var group = base("CARD_ACCOUNT:" + UUID.randomUUID(), rows.getFirst().getDueDate(),
+        account.getAccountName() + " 카드대금", PlanType.CARD_PAYMENT, Attribution.valueOf(account.getOwnerCode().name()));
+    group.setAccountId(r.accountId());
+    group.setAmount(total.signum() > 0 ? total : null);
+    group.setState("COMPLETED");
+    group.setActualDate(r.date());
+    group.setActualAmount(r.amount());
+    occurrences.insert(group);
+    for (var o : rows) {
+      var minimum = installmentService.total(o.getCardId(), YearMonth.from(o.getDueDate()));
+      installmentService.settle(o.getCardId(), o, new Commands.Payment(r.date(), minimum));
+      o.setState("COMPLETED");
+      o.setActualDate(r.date());
+      o.setActualAmount(null);
+      o.setPaymentGroupId(group.getId());
+      occurrences.update(o);
+    }
+    ops.changeBalance(r.accountId(), r.amount().negate());
+    return group;
+  }
+
+  public void moveCardAccount(Commands.OccurrenceGroup r) {
+    ops.lock();
+    for (var o : checkedCardGroup(r.accountId(), r.occurrenceIds())) move(o.getId(), r.date());
+  }
+
+  public void cancelCardAccount(Commands.OccurrenceGroup r) {
+    ops.lock();
+    var rows = checkedCardGroup(r.accountId(), r.occurrenceIds());
+    for (var o : rows) check(installmentService.total(o.getCardId(), YearMonth.from(o.getDueDate())).signum() == 0,
+        "할부가 연결된 결제입니다. 날짜를 변경하거나 할부를 비활성화해주세요.");
+    for (var o : rows) cancel(o.getId());
+  }
+
   public List<Occurrence> month(YearMonth month) {
     generate(month);
     return occurrences.findAll().stream()

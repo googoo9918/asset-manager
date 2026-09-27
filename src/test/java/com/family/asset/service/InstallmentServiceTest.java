@@ -30,4 +30,15 @@ class InstallmentServiceTest {
     assertThrows(BusinessException.class,()->InstallmentService.calculate(installment("100",0),31));
     assertThrows(BusinessException.class,()->InstallmentService.calculate(installment("0.01",3),31));
   }
+  @Test void acceptsDisplayedWholeWonButNotTrueUnderpayments() {
+    assertTrue(InstallmentService.coversTotal(new BigDecimal("33333"),new BigDecimal("33333.33")));
+    assertTrue(InstallmentService.coversTotal(new BigDecimal("33333.00"),new BigDecimal("33333.49")));
+    assertFalse(InstallmentService.coversTotal(new BigDecimal("33333"),new BigDecimal("33333.50")));
+    assertTrue(InstallmentService.coversTotal(new BigDecimal("33334"),new BigDecimal("33333.50")));
+    assertFalse(InstallmentService.coversTotal(new BigDecimal("33332"),new BigDecimal("33333.33")));
+    assertFalse(InstallmentService.coversTotal(new BigDecimal("33333.01"),new BigDecimal("33333.33")));
+    assertTrue(InstallmentService.coversTotal(new BigDecimal("33333.33"),new BigDecimal("33333.33")));
+    assertFalse(InstallmentService.coversTotal(new BigDecimal("199.99"),new BigDecimal("200.00")));
+    assertTrue(InstallmentService.coversTotal(new BigDecimal("9007199254740993"),new BigDecimal("9007199254740993.33")));
+  }
 }

@@ -40,6 +40,15 @@ public final class Commands {
       @DecimalMin("0") @Digits(integer = 22, fraction = 2) BigDecimal principal,
       @DecimalMin("0") @Digits(integer = 22, fraction = 2) BigDecimal interest) {}
 
+  public record AccountCardPayment(
+      @NotNull Long accountId,
+      @NotEmpty List<@NotNull Long> occurrenceIds,
+      @NotNull LocalDate date,
+      @NotNull @DecimalMin("0.01") @Digits(integer = 22, fraction = 2) BigDecimal amount) {}
+
+  public record OccurrenceGroup(@NotNull Long accountId, @NotEmpty List<@NotNull Long> occurrenceIds,
+      @NotNull LocalDate date) {}
+
   public record ScheduleRow(
       LocalDate date,
       BigDecimal principal,

@@ -73,11 +73,19 @@ public class InstallmentService {
         .reduce(BigDecimal.ZERO, BigDecimal::add);
   }
 
+  // The UI rounds KRW to whole won. Accept that displayed total for whole-won input,
+  // while preserving exact comparisons when the user explicitly enters fractional won.
+  public static boolean coversTotal(BigDecimal actual, BigDecimal total) {
+    return actual.compareTo(total) >= 0
+        || (actual.stripTrailingZeros().scale() <= 0
+            && actual.compareTo(total.setScale(0, RoundingMode.HALF_UP)) >= 0);
+  }
+
   public void settle(Long cardId, Occurrence occurrence, Commands.Payment payment) {
     ops.lock();
     var rows = pending(cardId, YearMonth.from(occurrence.getDueDate()));
     var total = rows.stream().map(InstallmentSchedule::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
-    check(payment.amount().compareTo(total) >= 0,
+    check(coversTotal(payment.amount(), total),
         "실제 출금액은 이번 결제월의 할부 합계 이상이어야 합니다. 할부 내역과 결제월을 확인해주세요.");
     for (var row : rows) {
       var x = require(installments.findById(row.getInstallmentId()), "기존 할부");

@@ -95,6 +95,22 @@ public class FinanceController {
   @GetMapping("/occurrences/{id}")
   public Occurrence occurrence(@PathVariable Long id) { return plans.get(id); }
 
+  @GetMapping("/occurrences/{id}/card-account-group")
+  public Object cardAccountGroup(@PathVariable Long id) { return plans.cardAccountGroup(id); }
+
+  @PostMapping("/occurrences/card-account/confirm")
+  public Object confirmCardAccount(@Valid @RequestBody Commands.AccountCardPayment r) {
+    return plans.confirmCardAccount(r);
+  }
+
+  @PutMapping("/occurrences/card-account/date")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void moveCardAccount(@Valid @RequestBody Commands.OccurrenceGroup r) { plans.moveCardAccount(r); }
+
+  @PostMapping("/occurrences/card-account/cancel")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void cancelCardAccount(@Valid @RequestBody Commands.OccurrenceGroup r) { plans.cancelCardAccount(r); }
+
   @DeleteMapping("/occurrences/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void cancelOccurrence(@PathVariable Long id) {

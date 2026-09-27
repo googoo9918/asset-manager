@@ -337,6 +337,34 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.reload();await page.waitForSelector('#content[aria-busy="false"]');
   await page.locator('#kb-import').click();await page.waitForSelector('#kb-collect');
   await page.locator('#close-modal').click();
+  // Account-level card payments: one input for multiple cards, then one completed calendar item.
+  const due=new Date().toISOString().slice(0,10);
+  const members=[1,2].map(id=>({id,cardId:id,accountId:1,sourceKey:'CARD:'+id,dueDate:due,title:'카드 결제',planType:'CARD_PAYMENT',attribution:id===1?'HUSBAND':'WIFE',amount:'100000',state:'PENDING'}));
+  let accountPayment=null;
+  await page.route('http://asset.test/api/cards',r=>r.fulfill({json:[...fixtures('http://asset.test/api/cards'),{...fixtures('http://asset.test/api/cards')[0],id:2,cardName:'두 번째 카드',ownerCode:'WIFE'}]}));
+  await page.route('http://asset.test/api/occurrences**',async route=>{
+    const u=new URL(route.request().url());
+    if(u.pathname==='/api/occurrences/card-account/confirm'){
+      const body=route.request().postDataJSON();assert.deepEqual(body.occurrenceIds,[1,2]);assert.equal(body.accountId,1);assert.equal(body.amount,'250000');
+      accountPayment={...members[0],id:10,cardId:null,sourceKey:'CARD_ACCOUNT:test',title:'생활비 카드대금',state:'COMPLETED',actualDate:body.date,actualAmount:body.amount};
+      members.forEach(o=>{o.state='COMPLETED';o.paymentGroupId=10;});return route.fulfill({json:accountPayment});
+    }
+    if(u.pathname.endsWith('/card-account-group'))return route.fulfill({json:members});
+    if(u.pathname==='/api/occurrences')return route.fulfill({json:accountPayment?[...members,accountPayment]:members});
+    return route.fulfill({json:u.pathname.endsWith('/10')?accountPayment:members[0]});
+  });
+  await page.goto('http://asset.test/planned');await page.waitForSelector('#content[aria-busy="false"]');
+  await page.locator('[data-owner=JOINT]').click();await page.waitForSelector('#content[aria-busy="false"]');
+  assert.equal(await page.locator('#calendar [data-action=occurrence-confirm]').count(),1);
+  assert.match(await page.locator('#calendar').innerText(),/생활비 카드대금/);
+  await page.locator('#calendar [data-action=occurrence-confirm]').click();await page.waitForSelector('#modal[open]');
+  assert.match(await page.locator('#modal-body').innerText(),/두 번째 카드/);
+  assert.equal(await page.locator('[name=amount]').inputValue(),'');
+  await page.locator('[name=amount]').fill('250000');await page.locator('#save-modal').click();await page.waitForSelector('#modal',{state:'hidden'});
+  await page.waitForSelector('#calendar .done');assert.equal(await page.locator('#calendar [data-action=occurrence-confirm]').count(),1);
+  await page.locator('#calendar .done').click();await page.waitForSelector('#modal[open]');
+  assert.match(await page.locator('#modal-body').innerText(),/250,000원/);assert.match(await page.locator('#modal-body').innerText(),/두 번째 카드/);
+  await page.locator('#close-modal').click();
   fs.mkdirSync(path.join(root,'build'),{recursive:true});
   await page.screenshot({path:path.join(root,'build/ui-preview.png'),fullPage:true});
   assert.deepEqual(errors,[]);console.log('PASS browser routes, buttons, dual amounts, tooltip, order persistence, detail, confirm popup, portfolio/detail sorting and sort persistence');

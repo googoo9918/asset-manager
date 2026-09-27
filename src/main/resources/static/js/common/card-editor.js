@@ -60,8 +60,8 @@ async function cardDetail(id) {
       entryTable(es.filter((e) => eq(e.cardId, id))) +
       `<h3>카드대금 출금 이력</h3>` +
       table(
-        ["출금일", "금액"],
-        ps.map((p) => [p.payment_date, krw(p.amount)]),
+        ["출금일", "금액", "기준"],
+        ps.map((p) => [p.payment_date, krw(p.amount), p.grouped ? "결제 계좌 전체 총액 (이 카드 포함)" : "카드별 출금"]),
       ) +
       `<h3>기존 할부</h3><p class="muted">매월 카드 결제 예정에 포함됩니다. 결제 확정 시 해당 월의 할부 회차가 자동 차감됩니다.</p>` +
       table(

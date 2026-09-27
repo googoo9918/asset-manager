@@ -43,4 +43,5 @@ public class Occurrence {
   private BigDecimal actualAmount;
 
   private Long entryId;
+  private Long paymentGroupId;
 }

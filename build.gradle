@@ -25,6 +25,15 @@ tasks.named('test') { useJUnitPlatform() }
 tasks.named('bootWar') { archiveFileName = 'asset-manager.war' }
 tasks.named('war') { enabled = false }
 
+tasks.register('migrateAccountCardPayment', JavaExec) {
+    description = 'Add account-level card payment history links without changing balances.'
+    group = 'application'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'tools/ApplyAccountCardMigration.java'
+    workingDir = projectDir
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}
+
 tasks.register('migrateKbCardImport', JavaExec) {
     description = 'Create the KB card import identity table in the configured local database.'
     group = 'application'

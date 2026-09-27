@@ -8,7 +8,7 @@ const hh=aa.filter(a=>a.assetType==='SECURITIES').map(a=>({id:a.id,accountId:a.i
 const cc=[{id:1,cardName:'테스트 카드',ownerCode:'HUSBAND',cardType:'CREDIT',accountId:1,status:'ACTIVE',paymentDay:10}];
 const entries=[{id:1,transactionDate:date,transactionType:'EXPENSE',amount:'1000',attribution:'HUSBAND',cardId:1,categoryId:1,origin:'MANUAL',voided:false}];
 const installment={id:1,cardId:1,remainingMonths:2,remainingAmount:'200000',firstPaymentDate:date,memo:'노트북 할부',active:true};
-const occurrence={id:1,cardId:1,sourceKey:'CARD:1',dueDate:date,title:'테스트 카드 결제',planType:'CARD_PAYMENT',attribution:'HUSBAND',amount:'100000',state:'PENDING'};
+const occurrence={id:1,cardId:1,accountId:1,sourceKey:'CARD:1',dueDate:date,title:'테스트 카드 결제',planType:'CARD_PAYMENT',attribution:'HUSBAND',amount:'100000',state:'PENDING'};
 function fixtures(url){const u=new URL(url,'http://test'),p=u.pathname;let account=u.searchParams.get('account');
  if(p==='/api/accounts')return aa;
  if(p==='/api/cards')return cc;
@@ -16,6 +16,7 @@ function fixtures(url){const u=new URL(url,'http://test'),p=u.pathname;let accou
  if(p==='/api/installment-schedules')return [{id:1,installmentId:1,dueDate:date,amount:'100000',state:'PENDING'}];
  if(p==='/api/occurrences')return [occurrence];
  if(p==='/api/occurrences/1')return occurrence;
+ if(p==='/api/occurrences/1/card-account-group')return [occurrence];
  if(p==='/api/loans')return [];
  if(p==='/api/categories')return [{id:1,name:'생활비',active:true,transactionType:'EXPENSE'}];
  if(p==='/api/metadata')return {OwnerCode:[{code:'HUSBAND',label:'동구'},{code:'WIFE',label:'윱니'}],AssetType:[{code:'CASH',label:'현금성 자산'},{code:'SAVINGS',label:'적금'}],TransactionType:[{code:'INCOME',label:'수입'},{code:'EXPENSE',label:'지출'}]};
@@ -65,13 +66,25 @@ async function runPage(name){
   assert.match(ids.get('modal-body').innerHTML,/할부 회차별 예정·납부 이력/);
   await vm.runInContext('confirmOccurrence(1)',sandbox);
   assert.equal(ids.get('name:amount').value,'');
-  assert.match(ids.get('modal-body').children.at(-1).innerHTML,/노트북 할부/);
+  assert.match(ids.get('modal-body').innerHTML,/노트북 할부/);
   await vm.runInContext('paymentModal(1)',sandbox);
   assert.match(ids.get('modal-body').innerHTML,/name="billingMonth"/);
  }
  if(name==='planned') {
   assert.match(ids.get('plan-list').innerHTML,/노트북 할부/);
   assert.match(ids.get('calendar').innerHTML,/100,000원/);
+  sandbox.groupRows=[
+   {...occurrence,id:1,accountId:1,amount:'100'},
+   {...occurrence,id:2,cardId:2,accountId:1,attribution:'WIFE',amount:'200'},
+   {...occurrence,id:3,cardId:3,accountId:2,amount:'300'},
+   {...occurrence,id:4,cardId:4,accountId:1,actualDate:'2030-01-11',amount:'400'},
+   {...occurrence,id:5,paymentGroupId:10,state:'COMPLETED'},
+   {...occurrence,id:10,cardId:null,accountId:1,sourceKey:'CARD_ACCOUNT:group',state:'COMPLETED',actualAmount:'500'}
+  ];
+  const grouped=vm.runInContext('accountPaymentOccurrences(groupRows)',sandbox);
+  assert.equal(grouped.length,4);assert.equal(Number(grouped[0].amount),300);
+  assert.equal(grouped[0].attribution,'HUSBAND');assert.match(grouped[0].title,/생활비 카드대금/);
+  assert.equal(grouped.filter(o=>o.state==='COMPLETED').length,1);
  }
  if(name==='securities'){
   const sortRows=[

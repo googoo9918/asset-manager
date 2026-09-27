@@ -5,6 +5,7 @@ async function planned() {
   const [plans, installments, schedules] = await Promise.all([
     api("/plans"), api("/installments"), api("/installment-schedules")]);
   currentOccurrences = await api("/occurrences?month=" + calendarMonth);
+  const calendarRows = accountPaymentOccurrences(currentOccurrences);
   pageTemplate();
   $("#calendar-month").value=calendarMonth;
   $("#plan-list").innerHTML=
@@ -58,7 +59,7 @@ async function planned() {
     '<div class="day"></div>'.repeat(first) +
     Array.from({ length }, (_, i) => {
       const date = calendarMonth + "-" + String(i + 1).padStart(2, "0");
-      const rows = currentOccurrences.filter(
+      const rows = calendarRows.filter(
         (o) =>
           (o.actualDate || o.dueDate) === date &&
           (state.owner === "JOINT" || o.attribution === state.owner),
@@ -90,7 +91,25 @@ async function renderPage() { await planned(); }
 
 function drawPlannedChart() {
   const grouped=new Map();
-  currentOccurrences.filter(o=>o.state==="PENDING" && o.amount != null && (state.owner==="JOINT"||o.attribution===state.owner)).forEach(o=>grouped.set(o.dueDate,sum([grouped.get(o.dueDate)||"0",o.amount])));
+  accountPaymentOccurrences(currentOccurrences).filter(o=>o.state==="PENDING" && o.amount != null && (state.owner==="JOINT"||o.attribution===state.owner)).forEach(o=>{const date=o.actualDate||o.dueDate;grouped.set(date,sum([grouped.get(date)||"0",o.amount]));});
   $("#planned-chart").innerHTML=lineChart([...grouped].sort(([a],[b])=>a.localeCompare(b)).map(([date,value])=>({date,value})),"등록된 예정금액");
+}
+
+function accountPaymentOccurrences(rows) {
+  const grouped = new Map(), result = [];
+  for (const o of rows) {
+    if (o.paymentGroupId) continue;
+    if (o.planType !== "CARD_PAYMENT" || o.state !== "PENDING" || !o.cardId) { result.push(o); continue; }
+    const accountId = o.accountId || card(o.cardId)?.accountId;
+    const key = [accountId, o.actualDate || o.dueDate, o.dueDate.slice(0,7)].join(":");
+    if (!grouped.has(key)) {
+      const account = acc(accountId);
+      const group = {...o, accountId, title:(account?.accountName || "결제 계좌")+" 카드대금", attribution:account?.ownerCode || o.attribution, amount:null};
+      grouped.set(key,group);result.push(group);
+    }
+    const group = grouped.get(key);
+    if (o.amount != null) group.amount = sum([group.amount || "0",o.amount]);
+  }
+  return result;
 }
 

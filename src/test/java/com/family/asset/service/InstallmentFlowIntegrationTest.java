@@ -57,6 +57,7 @@ class InstallmentFlowIntegrationTest {
   long accountId, cardId;
   final YearMonth start=YearMonth.of(2030,1);
   @BeforeEach void setup() {
+    db.execute("ALTER TABLE planned_occurrence ADD COLUMN IF NOT EXISTS payment_group_id bigint REFERENCES planned_occurrence(id)");
     accountId=db.queryForObject("INSERT INTO asset_account(account_name,account_number,status,asset_type,owner_code,institution_code,current_balance_krw) VALUES('test','test','ACTIVE','CASH','HUSBAND','KB',1000000) RETURNING id",Long.class);
     cardId=db.queryForObject("INSERT INTO payment_card(card_name,status,card_type,owner_code,account_id,payment_day,created_at) VALUES('test','ACTIVE','CREDIT','HUSBAND',?,31,'2020-01-01') RETURNING id",Long.class,accountId);
   }
@@ -69,6 +70,41 @@ class InstallmentFlowIntegrationTest {
   Installment read(Long id) { return catalog.installments().stream().filter(x->x.getId().equals(id)).findFirst().orElseThrow(); }
   void pay(Occurrence o,String amount,LocalDate date) { plans.confirm(o.getId(),new Commands.Confirm(date,new BigDecimal(amount),null,null)); }
   void money(String expected,BigDecimal actual) { assertEquals(0,new BigDecimal(expected).compareTo(actual)); }
+
+  @Test void accountPaymentSettlesTwoCardsOnceAndPreservesCombinedHistory() {
+    var installment=add("300000",3);
+    long second=db.queryForObject("INSERT INTO payment_card(card_name,status,card_type,owner_code,account_id,payment_day,created_at) VALUES('second','ACTIVE','CREDIT','WIFE',?,31,'2020-01-01') RETURNING id",Long.class,accountId);
+    var children=plans.month(start).stream().filter(o->o.getCardId()!=null && (o.getCardId()==cardId||o.getCardId()==second)).toList();
+    assertEquals(2,children.size());
+    var request=new Commands.AccountCardPayment(accountId,children.stream().map(Occurrence::getId).toList(),start.atEndOfMonth(),new BigDecimal("250000"));
+    var group=plans.confirmCardAccount(request);
+    money("750000",catalog.account(accountId).getCurrentBalanceKrw());assertEquals(2,read(installment.getId()).getRemainingMonths());
+    assertEquals(2,plans.cardAccountGroup(group.getId()).size());
+    assertEquals(0,db.queryForObject("SELECT count(*) FROM ledger_entry",Integer.class));
+    assertEquals(0,db.queryForObject("SELECT count(*) FROM card_payment WHERE card_id IN (?,?)",Integer.class,cardId,second));
+    for(long id:new long[]{cardId,second}) {
+      var history=catalog.cardPayments(id);assertEquals(1,history.size());assertEquals(true,history.getFirst().get("grouped"));
+      money("250000",(BigDecimal)history.getFirst().get("amount"));
+    }
+    assertThrows(BusinessException.class,()->plans.confirmCardAccount(request));
+    assertThrows(BusinessException.class,()->plans.payCard(cardId,new Commands.Payment(start.atEndOfMonth(),new BigDecimal("100000")),null));
+    money("750000",catalog.account(accountId).getCurrentBalanceKrw());
+    plans.generate(start);
+    assertEquals(3,plans.month(start).size());
+  }
+
+  @Test void roundedDisplayedTotalSettlesWithoutChangingActualDebitOrSchedulePrecision() {
+    var x=add("100000",3);
+    var o=occurrence(start);money("33333.33",o.getAmount());
+    var group=plans.confirmCardAccount(new Commands.AccountCardPayment(accountId,java.util.List.of(o.getId()),start.atEndOfMonth(),new BigDecimal("33333")));
+    money("966667",catalog.account(accountId).getCurrentBalanceKrw());
+    money("66666.67",read(x.getId()).getRemainingAmount());assertEquals(2,read(x.getId()).getRemainingMonths());
+    money("33333",plans.get(group.getId()).getActualAmount());
+    money("33333.33",plans.get(group.getId()).getAmount());
+    plans.payCard(cardId,new Commands.Payment(start.plusMonths(1).atEndOfMonth(),new BigDecimal("33333"),start.plusMonths(1)),null);
+    money("933334",catalog.account(accountId).getCurrentBalanceKrw());
+    money("33333.34",read(x.getId()).getRemainingAmount());
+  }
 
   @Test void registersRepeatsSettlesMultipleInstallmentsAndCompletesWithoutNewExpense() {
     var a=add("300000",3); var b=add("60000",2);
