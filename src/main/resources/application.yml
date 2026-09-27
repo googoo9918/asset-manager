@@ -37,5 +37,6 @@ app:
   zone: Asia/Seoul
 kis:
   enabled: false
+  trading-enabled: false
   base-url: https://openapi.koreainvestment.com:9443
 

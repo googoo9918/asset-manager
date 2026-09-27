@@ -74,6 +74,8 @@ document.addEventListener(
         return confirmOccurrence(id);
       case "security-detail":
         return securityDetail(id);
+      case "holding-order":
+        return stockOrderFromHolding(id,b.dataset.currency,b.dataset.account);
       case "daily-price-history":
         return dailyPriceHistory(id);
       case "snapshot-detail":

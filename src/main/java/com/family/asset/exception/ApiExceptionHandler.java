@@ -8,6 +8,7 @@ import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
@@ -55,6 +56,11 @@ public class ApiExceptionHandler {
   public ResponseEntity<?> integrity(Exception e) {
     log.warn("DB integrity failure", e);
     return error(HttpStatus.CONFLICT, "중복된 데이터이거나 참조 중인 데이터입니다. 입력값과 연결된 내역을 확인해주세요.");
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<?> contentType(HttpMediaTypeNotSupportedException e) {
+    return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "요청의 Content-Type을 application/json으로 지정해주세요.");
   }
 
   @ExceptionHandler(Exception.class)

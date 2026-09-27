@@ -24,6 +24,7 @@ function fixtures(url){const u=new URL(url,'http://test'),p=u.pathname;let accou
  if(p==='/api/monthly')return {income:'0',expense:'1000',major:{생활비:'1000'},minor:{식비:'1000'}};
  if(p==='/api/transactions')return entries;
  if(p==='/api/securities/holdings')return account?hh.filter(h=>h.accountId===Number(account)):hh;
+ if(p==='/api/securities/orders/settings')return {enabled:false,environment:'DEMO'};
  if(p==='/api/securities/portfolio')return [{symbol:'TEST',name:'테스트',currency:'USD',quantity:'4',costNative:'160',valueNative:'200',valueKrw:'270000'},{symbol:'CASH',name:'예수금',currency:'KRW',quantity:'0',costNative:'1000.98',valueNative:'1000.98',valueKrw:'1000.98'}];
  if(p==='/api/snapshots')return [{id:1,captured_at:timestamp,total_assets:'542001.96',total_debts:'0',net_assets:'542001.96',sync_status:'성공'}];
  if(p==='/api/snapshots/1')return aa.map(a=>({item_type:'ACCOUNT',asset_type:a.assetType,owner_code:a.ownerCode,amount_krw:a.currentBalanceKrw,details:JSON.stringify(a)}));

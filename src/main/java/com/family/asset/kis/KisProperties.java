@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "kis")
 public class KisProperties {
   private boolean enabled = false;
+  private boolean tradingEnabled = false;
   private String baseUrl = "https://openapi.koreainvestment.com:9443";
   private String appKey = "";
   private String appSecret = "";

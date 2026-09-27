@@ -108,6 +108,20 @@ public class KisClient {
     return pages(c,path,tr,params,cursor,false);
   }
 
+  public List<JsonNode> tradingGet(Account account, String path, String tr, Map<String,String> params, String cursor) {
+    return pages(config.credentials(account.getId()),path,tr,new LinkedHashMap<>(params),cursor);
+  }
+
+  /** Mutating broker calls are sent exactly once. Never pass them through the read retry helper. */
+  public JsonNode tradingPost(Account account, String path, String tr, Map<String,String> params) {
+    var c=config.credentials(account.getId());
+    var accessToken=token(c);
+    waitForRequestSlot();
+    return client().post().uri(path).header("authorization","Bearer "+accessToken)
+        .header("appkey",c.getAppKey()).header("appsecret",c.getAppSecret()).header("tr_id",tr)
+        .header("custtype","P").body(params).retrieve().body(JsonNode.class);
+  }
+
   private List<JsonNode> pages(KisProperties.Credential c, String path, String tr,
       Map<String,String> params, String cursor, boolean firstPageOnly) {
     List<JsonNode> all = new ArrayList<>();

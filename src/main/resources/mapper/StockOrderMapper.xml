@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.family.asset.mapper.StockOrderMapper">
+ <select id="find" resultType="com.family.asset.dto.StockOrder">SELECT * FROM stock_order WHERE id=#{id}</select>
+ <select id="list" resultType="com.family.asset.dto.StockOrder">
+ SELECT * FROM stock_order WHERE status!='PREVIEW'
+ <if test="owner != 'JOINT'">AND owner_code=#{owner}</if>
+ ORDER BY created_at DESC,id LIMIT 200
+ </select>
+ <select id="unresolved" resultType="int">SELECT count(*) FROM stock_order WHERE account_id=#{accountId} AND status IN ('SENDING','UNKNOWN','CANCEL_SENDING','CANCEL_UNKNOWN')</select>
+ <insert id="insert">
+ INSERT INTO stock_order(id,account_id,account_name,owner_code,account_binding,environment,exchange,symbol,side,order_type,quantity,price,quote_price,quoted_at,expires_at,order_date,status,filled_quantity,remaining_quantity,message)
+ VALUES(#{id},#{accountId},#{accountName},#{ownerCode},#{accountBinding},#{environment},#{exchange},#{symbol},#{side},#{orderType},#{quantity},#{price},#{quotePrice},#{quotedAt},#{expiresAt},#{orderDate},'PREVIEW',0,#{quantity},'주문 전송 전')
+ </insert>
+ <update id="claimSubmit">UPDATE stock_order SET status='SENDING',version=version+1,message='주문 전송 중 · 재전송 금지',updated_at=now() WHERE id=#{id} AND version=#{version} AND status='PREVIEW' AND expires_at&gt;now()</update>
+ <update id="claimCancel">UPDATE stock_order SET status='CANCEL_SENDING',version=version+1,message='잔량 취소 요청 중',updated_at=now() WHERE id=#{id} AND version=#{version} AND status IN ('ACCEPTED','PARTIAL') AND remaining_quantity&gt;0</update>
+ <update id="update">
+ UPDATE stock_order SET status=#{status},broker_order_id=#{brokerOrderId},broker_branch=#{brokerBranch},cancel_order_id=#{cancelOrderId},filled_quantity=#{filledQuantity},remaining_quantity=#{remainingQuantity},average_fill_price=#{averageFillPrice},message=#{message},version=version+1,updated_at=now()
+ WHERE id=#{id} AND version=#{version}
+ </update>
+</mapper>

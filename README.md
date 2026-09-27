@@ -173,6 +173,8 @@ asset-manager/
 
 REST API 상세는 `docs/API.md`, 구현 판단 및 제한은 `docs/DECISIONS.md`, 검증은 `docs/TEST-RESULTS.md`를 참고하세요.
 
+KIS 매수·매도는 증권 화면에서 지정가·현재가 지정가·국내 시장가로 지원합니다. 주문 기능은 기본 비활성화이며, DB 마이그레이션·활성화 설정·체결 조회·취소·응답 유실 복구 방법은 [주식 주문 안내](docs/STOCK_ORDERS.md)를 참고하세요.
+
 ## 테스트
 
 ```powershell

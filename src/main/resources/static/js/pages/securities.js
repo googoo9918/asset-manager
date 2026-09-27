@@ -51,7 +51,9 @@ function holdingTable(rows,total,sort) {
   const headers=["종목 / 코드","원래 통화","수량","평균매입가 KRW / USD","현재가 KRW / USD","매입금액 KRW / USD","평가금액 KRW / USD","평가손익 KRW / USD","수익률 (환율 제외)","비중","당일 등락률 (시세일 기준)"];
   let html=table(headers,rows.map(h=>{
     const cash=h.symbol==="CASH", currency=h.currencyCode||h.currency, cost=h.costNative??mul(h.averagePrice,h.quantity), profit=sub(h.valueNative,cost);
-    return [esc(h.name)+" / "+esc(h.symbol),currency==="KRW"?"KRW (원)":currency,cash?"—":fmt(h.quantity),
+    const name=esc(h.name)+" / "+esc(h.symbol);
+    const orderLink=cash?name:`<button type="button" data-action="holding-order" data-id="${esc(h.symbol)}" data-currency="${esc(currency)}" data-account="${esc(h.accountId||"")}" aria-label="${esc(h.name||h.symbol)} 매수 또는 매도">${name}</button>`;
+    return [orderLink,currency==="KRW"?"KRW (원)":currency,cash?"—":fmt(h.quantity),
       cash?"—":dualAmount(div(h.costKrw,h.quantity),h.costUsd===null?null:div(h.costUsd,h.quantity),currency),
       cash?"—":dualAmount(h.priceKrw,h.priceUsd,currency),cash?"—":dualAmount(h.costKrw,h.costUsd,currency),
       dualAmount(h.valueKrw,h.valueUsd,currency),cash?"—":dualAmount(sub(h.valueKrw,h.costKrw),h.valueUsd===null||h.costUsd===null?null:sub(h.valueUsd,h.costUsd),currency),
@@ -131,6 +133,7 @@ async function securities() {
   $("#trend-metric").closest("select").hidden=true;
   await bindTrend();
   await bindDailyPriceHistory();
+  await bindStockOrders();
 }
 
 function dailyPercent(value) {

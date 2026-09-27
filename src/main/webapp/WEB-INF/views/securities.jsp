@@ -2,6 +2,13 @@
 <%-- securities 화면 구조. 데이터 조회와 이벤트는 js/pages/securities.js에서 관리한다. --%>
 <%@ include file="common/header.jspf" %>
 <template id="page-template">
+    <section class="panel"><h2>주식 주문</h2>
+        <p id="stock-order-settings" class="muted"></p>
+        <div class="toolbar"><button type="button" id="stock-order-new" class="primary">매수 / 매도</button><button type="button" id="stock-order-reload">주문 내역 새로고침</button></div>
+        <p class="muted">이 화면에서 전송한 최근 200건 · 15건씩 표시합니다. 체결 조회로 KIS 상태를 확인하고, 체결 후 자산 갱신을 실행하면 보유종목에 반영됩니다.</p>
+        <div id="stock-order-list"></div>
+        <div class="toolbar"><button type="button" id="stock-order-prev">이전</button><span id="stock-order-page" role="status"></span><button type="button" id="stock-order-next">다음</button></div>
+    </section>
     <section class="panel"><h2>증권계좌</h2>
         <div class="toolbar">
             <button id="new-security" class="primary">증권계좌 등록</button>
@@ -49,5 +56,6 @@
 <%@ include file="common/footer.jspf" %>
 <script src="<c:url value='/js/common/account-editor.js'/>"></script>
 <script src="<c:url value='/js/pages/securities.js'/>"></script>
+<script src="<c:url value='/js/common/stock-orders.js'/>"></script>
 <script src="<c:url value='/js/common/events.js'/>"></script>
 </body></html>
