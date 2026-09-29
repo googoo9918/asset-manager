@@ -51,11 +51,11 @@ public class KisOrderClient {
     p.put("CTAC_TLNO","");p.put("MGCO_APTM_ODNO","");p.put("ORD_SVR_DVSN_CD","0");p.put("SLL_TYPE",buy?"":"00");
     return client.tradingPost(a,"/uapi/overseas-stock/v1/trading/order",tr(o,buy?"TTTT1002U":"TTTT1006U",buy?"VTTT1002U":"VTTT1001U"),p);
   }
-  public JsonNode lookup(Account a,StockOrder o) {
+  private List<JsonNode> orderRows(Account a,StockOrder o) {
     var p=base(a);boolean kr="KRX".equals(o.getExchange());List<JsonNode> rows;
     if(kr) {
       p.putAll(Map.of("INQR_STRT_DT",o.getOrderDate().format(DAY),"INQR_END_DT",o.getOrderDate().format(DAY),
-          "SLL_BUY_DVSN_CD","00","PDNO",o.getSymbol(),"CCLD_DVSN","00","INQR_DVSN","00","INQR_DVSN_3","00","ORD_GNO_BRNO","","ODNO",o.getBrokerOrderId(),"INQR_DVSN_1",""));
+          "SLL_BUY_DVSN_CD","00","PDNO",o.getSymbol(),"CCLD_DVSN","00","INQR_DVSN","00","INQR_DVSN_3","00","ORD_GNO_BRNO","","ODNO",Objects.toString(o.getBrokerOrderId(),""),"INQR_DVSN_1",""));
       p.put("CTX_AREA_FK100","");p.put("CTX_AREA_NK100","");p.put("EXCG_ID_DVSN_CD","KRX");
       boolean old=o.getOrderDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")).minusMonths(3));
       rows=get(a,"/uapi/domestic-stock/v1/trading/inquire-daily-ccld",tr(o,old?"CTSC9215R":"TTTC0081R",old?"VTSC9215R":"VTTC0081R"),p,"100","output1");
@@ -66,7 +66,29 @@ public class KisOrderClient {
       p.put("CTX_AREA_FK200","");p.put("CTX_AREA_NK200","");
       rows=get(a,"/uapi/overseas-stock/v1/trading/inquire-ccnl",tr(o,"TTTS3035R","VTTS3035R"),p,"200","output");
     }
-    var found=rows.stream().filter(r->sameNumber(r.path("odno").asText(),o.getBrokerOrderId())
+    return rows;
+  }
+  public record Candidate(String brokerOrderId,String orderDate,String orderTime,String symbol,String side,
+                          BigDecimal quantity,BigDecimal price,String exchange) {}
+  public List<Candidate> candidates(Account a,StockOrder o) {
+    boolean kr="KRX".equals(o.getExchange());
+    var result=new LinkedHashMap<String,Candidate>();
+    for(var r:orderRows(a,o)) {
+      if(!r.path("pdno").asText().equals(o.getSymbol())||!r.path("ord_dt").asText().equals(o.getOrderDate().format(DAY)))continue;
+      if(!("BUY".equals(o.getSide())?"02":"01").equals(r.path("sll_buy_dvsn_cd").asText()))continue;
+      if(!kr&&!o.getExchange().equals(r.path("ovrs_excg_cd").asText()))continue;
+      var quantity=KisClient.number(r,kr?"ord_qty":"ft_ord_qty");
+      var price=KisClient.number(r,kr?"ord_unpr":"ft_ord_unpr3");
+      if(quantity.compareTo(o.getQuantity())!=0||price.compareTo(o.getPrice())!=0)continue;
+      String id=r.path("odno").asText();check(id.matches("[0-9]{1,40}"),"조회 결과의 주문번호를 확인할 수 없습니다.");
+      id=id.replaceFirst("^0+(?!$)","");
+      result.putIfAbsent(id,new Candidate(id,r.path("ord_dt").asText(),r.path("ord_tmd").asText(),o.getSymbol(),o.getSide(),quantity,price,o.getExchange()));
+    }
+    return List.copyOf(result.values());
+  }
+  public JsonNode lookup(Account a,StockOrder o) {
+    boolean kr="KRX".equals(o.getExchange());
+    var found=orderRows(a,o).stream().filter(r->sameNumber(r.path("odno").asText(),o.getBrokerOrderId())
         && r.path("pdno").asText().equals(o.getSymbol()) && r.path("ord_dt").asText().equals(o.getOrderDate().format(DAY)))
         .toList();
     check(found.size()<=1,"동일 주문번호의 조회 결과가 여러 건입니다.");

@@ -17,6 +17,7 @@ import tools.jackson.databind.JsonNode;
 
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 // Claims must commit BEFORE any broker mutation, even if a caller has a transaction.
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 public class StockOrderService {
@@ -59,7 +60,10 @@ public class StockOrderService {
   }
   private LocalDate day(String exchange) {return LocalDate.now(ZoneId.of(exchange.equals("KRX")?"Asia/Seoul":"America/New_York"));}
   public StockOrder find(String id) {return require(orders.find(id),"주문");}
-  public List<StockOrder> list(OwnerCode owner) {return orders.list(owner.name());}
+  public List<StockOrder> list(String owner) {
+    check(Set.of("JOINT","HUSBAND","WIFE").contains(owner),"조회 기준을 확인해주세요.");
+    return orders.list(owner);
+  }
   public StockOrder preview(StockOrderRequest r) {
     var a=account(r.accountId(),true);
     check(orders.unresolved(a.getId())==0,"결과 확인이 필요한 주문이 있습니다. 기존 주문을 먼저 확인해주세요.");
@@ -87,11 +91,28 @@ public class StockOrderService {
     }
     o=find(id);
     try { applyResponse(o,broker.submit(a,o),false); }
-    catch(Exception e) {o.setStatus("UNKNOWN");o.setMessage("주문 결과 확인 필요 · 자동 재전송하지 않습니다. KIS 주문내역에서 확인 후 주문번호를 연결해주세요.");}
+    catch(Exception e) {unknown(o,e,false);}
     orders.update(o);return find(id);
   }
   private String value(JsonNode node,String key) {
     var v=node.path(key);return v.isMissingNode()?node.path(key.toUpperCase(Locale.ROOT)).asText(""):v.asText("");
+  }
+  static String failureReason(Exception e) {
+    // Never persist raw exception messages/bodies: they may contain credentials or account data.
+    if(e instanceof org.springframework.web.client.RestClientResponseException response)
+      return "KIS HTTP 오류 ("+response.getStatusCode().value()+")";
+    if(e instanceof org.springframework.web.client.ResourceAccessException)
+      return "KIS 통신 오류 또는 응답 시간 초과";
+    if(e instanceof com.family.asset.exception.BusinessException)
+      return "KIS 응답 검증 실패";
+    return "주문 처리 중 내부 오류";
+  }
+  private void unknown(StockOrder o,Exception e,boolean cancel) {
+    String reason=failureReason(e);
+    log.warn("Broker outcome unknown: orderId={}, operation={}, reason={}, exceptionType={}",
+        o.getId(),cancel?"cancel":"submit",reason,e.getClass().getSimpleName());
+    o.setStatus(cancel?"CANCEL_UNKNOWN":"UNKNOWN");
+    o.setMessage(reason+" · "+(cancel?"취소":"주문")+" 결과 확인 필요. 자동 재전송하지 않습니다. KIS 주문내역에서 접수 여부를 확인해주세요.");
   }
   private void applyResponse(StockOrder o,JsonNode body,boolean cancel) {
     check(body!=null,"KIS 응답이 없습니다.");
@@ -99,7 +120,7 @@ public class StockOrderService {
     if(code.equals("1")) {
       o.setStatus(cancel?(o.getFilledQuantity().signum()>0?"PARTIAL":"ACCEPTED"):"REJECTED");
       if(!cancel)o.setRemainingQuantity(BigDecimal.ZERO);
-      String msg=value(body,"msg1");o.setMessage((cancel?"취소 거절: ":"주문 거절: ")+msg.substring(0,Math.min(msg.length(),450)));return;
+      String msg=value(body,"msg_cd")+" · "+value(body,"msg1");o.setMessage((cancel?"취소 거절: ":"주문 거절: ")+msg.substring(0,Math.min(msg.length(),450)));return;
     }
     check(code.equals("0"),"KIS 주문 결과를 확인할 수 없습니다.");
     var output=body.path("output");var id=value(output,"odno");check(id.matches("[0-9]{1,40}"),"주문번호가 없습니다.");
@@ -137,6 +158,12 @@ public class StockOrderService {
     check(row!=null,"KIS 조회 결과에 아직 주문이 없습니다. 잠시 후 다시 조회해주세요.");
     applyInquiry(o,row);orders.update(o);return find(id);
   }
+  public List<KisOrderClient.Candidate> candidates(String id) {
+    var o=find(id);
+    check(o.getBrokerOrderId()==null&&Set.of("UNKNOWN","SENDING").contains(o.getStatus()),"접수 확인 대상 주문이 아닙니다.");
+    // An empty inquiry is not proof of rejection. Do not change state or resend.
+    return broker.candidates(bound(o,false),o);
+  }
   public StockOrder link(String id,String brokerId) {
     var o=find(id);check(o.getBrokerOrderId()==null&&Set.of("UNKNOWN","SENDING").contains(o.getStatus()),"주문번호 연결 대상이 아닙니다.");
     check(brokerId!=null&&brokerId.matches("[0-9]{1,40}"),"KIS 주문번호를 입력해주세요.");
@@ -153,7 +180,7 @@ public class StockOrderService {
     if(orders.claimCancel(id,o.getVersion())==0)return find(id);
     o=find(id);
     try {applyResponse(o,broker.cancel(a,o,quantity),true);}
-    catch(Exception e) {o.setStatus("CANCEL_UNKNOWN");o.setMessage("취소 결과 확인 필요 · 자동 재전송하지 않습니다.");}
+    catch(Exception e) {unknown(o,e,true);}
     orders.update(o);return find(id);
   }
 }

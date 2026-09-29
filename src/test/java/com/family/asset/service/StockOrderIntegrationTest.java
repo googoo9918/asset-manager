@@ -55,8 +55,10 @@ class StockOrderIntegrationTest {
     assertEquals("ACCEPTED",service.confirm(o.getId()).getStatus());verify(broker,times(1)).submit(any(),any());verify(broker,times(1)).quote(any(),anyString(),anyString());
     assertEquals("123",service.find(o.getId()).getBrokerOrderId());
     assertFalse(json.writeValueAsString(service.find(o.getId())).contains("accountBinding"));
-    assertEquals(1,service.list(OwnerCode.HUSBAND).stream().filter(x->x.getAccountId()==accountId).count());
-    assertEquals(0,service.list(OwnerCode.WIFE).stream().filter(x->x.getAccountId()==accountId).count());
+    assertEquals(1,service.list("HUSBAND").stream().filter(x->x.getAccountId()==accountId).count());
+    assertEquals(0,service.list("WIFE").stream().filter(x->x.getAccountId()==accountId).count());
+    assertEquals(1,service.list("JOINT").stream().filter(x->x.getAccountId()==accountId).count());
+    assertThrows(RuntimeException.class,()->service.list("INVALID"));
   }
   @Test void timeoutPersistsUnknownAndNeverResendsOrAllowsNewPreview() {
     var o=preview("KRX","MARKET");when(broker.submit(any(),any())).thenThrow(new IllegalStateException("lost response"));

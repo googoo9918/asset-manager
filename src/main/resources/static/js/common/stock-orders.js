@@ -2,6 +2,7 @@
 const stockOrderStatuses={PREVIEW:"전송 전",SENDING:"전송 중 / 결과 확인 필요",ACCEPTED:"접수",PARTIAL:"부분 체결",FILLED:"전량 체결",REJECTED:"거절",UNKNOWN:"결과 확인 필요",CANCEL_SENDING:"취소 요청 중",CANCEL_PENDING:"취소 접수",CANCEL_UNKNOWN:"취소 결과 확인 필요",CANCELLED:"잔량 취소 완료"};
 const stockOrderTypes={LIMIT:"지정가",CURRENT:"현재가 지정가",MARKET:"시장가"};
 const orderCurrency=o=>o.exchange==="KRX"?"KRW":"USD";
+const stockOrderUnverified=o=>!o.brokerOrderId&&["UNKNOWN","SENDING"].includes(o.status);
 let stockOrderReload=async()=>{};
 function stockOrderProgress(step) {
   return `<ol class="order-progress" aria-label="주문 진행 단계">${["주문 입력","최종 확인","주문 결과"].map((text,i)=>`<li ${i===step?'aria-current="step"':''}>${i+1}. ${text}</li>`).join("")}</ol>`;
@@ -23,7 +24,7 @@ async function bindStockOrders() {
     container.innerHTML=rows.length?table(["신청일 / 환경","계좌","종목 / 거래소","방향 / 방식","수량 / 가격","체결 / 잔량","상태 / KIS 주문번호","확인"],rows.slice(page*15,page*15+15).map(o=>[
       esc(new Date(o.createdAt).toLocaleString("ko-KR"))+" / "+(o.environment==="REAL"?"실전":"모의"),esc(o.accountName),esc(o.symbol)+" / "+esc(o.exchange),
       (o.side==="BUY"?"매수":"매도")+" / "+esc(stockOrderTypes[o.orderType]),fmt(o.quantity)+"주 / "+(o.orderType==="MARKET"?"시장가":money(o.price,orderCurrency(o))),
-      fmt(o.filledQuantity)+" / "+fmt(o.remainingQuantity),stockOrderBadge(o)+"<br>"+esc(o.brokerOrderId||"미확인"),
+      stockOrderUnverified(o)?"미확인 / 미확인":fmt(o.filledQuantity)+" / "+fmt(o.remainingQuantity),stockOrderBadge(o)+"<br>"+esc(o.brokerOrderId||"미확인"),
       `<button type="button" data-order-detail="${esc(o.id)}">상세 / 체결 조회</button>`])):emptyState("아직 전송한 주문이 없습니다.","보유 종목명이나 매수 / 매도 버튼으로 주문을 시작하세요. 최종 확인 전에는 주문이 전송되지 않습니다.");
     $("#stock-order-page").textContent=`${page+1} / ${Math.max(1,Math.ceil(rows.length/15))} 페이지 · ${rows.length}건`;
     $("#stock-order-prev").disabled=page===0;$("#stock-order-next").disabled=(page+1)*15>=rows.length;
@@ -136,10 +137,31 @@ function stockOrderConfirm(o,onEdit=null) {
   };
 }
 function stockOrderDetail(o) {
-  modal("주문 상세",stockOrderProgress(2)+`<p>${stockOrderBadge(o)}</p>`+stockOrderSummary(o)+detailGrid({"상태":stockOrderStatuses[o.status],"KIS 주문번호":o.brokerOrderId||"미확인","체결 수량":fmt(o.filledQuantity),"미체결 수량":fmt(o.remainingQuantity),"체결 평균가":o.averageFillPrice==null?"—":money(o.averageFillPrice,orderCurrency(o)),"안내":o.message})+
+  const message=stockOrderUnverified(o)&&o.message?.includes("주문번호를 연결해주세요")?"접수 결과를 확인하지 못했습니다. 아래에서 주문번호 없이 KIS 접수 내역을 확인해주세요.":o.message;
+  modal("주문 상세",stockOrderProgress(2)+`<p>${stockOrderBadge(o)}</p>`+stockOrderSummary(o)+detailGrid({"상태":stockOrderStatuses[o.status],"KIS 주문번호":o.brokerOrderId||"미확인","체결 수량":stockOrderUnverified(o)?"미확인":fmt(o.filledQuantity),"미체결 수량":stockOrderUnverified(o)?"미확인":fmt(o.remainingQuantity),"체결 평균가":o.averageFillPrice==null?"—":money(o.averageFillPrice,orderCurrency(o)),"안내":message})+
     (o.brokerOrderId?'<button type="button" id="stock-order-sync">체결 조회</button>':'')+
     (["ACCEPTED","PARTIAL"].includes(o.status)?'<button type="button" id="stock-order-cancel">미체결 잔량 취소</button>':'')+
-    (!o.brokerOrderId&&["UNKNOWN","SENDING"].includes(o.status)?'<p>먼저 KIS 앱에서 주문을 확인해주세요. 주문번호를 연결하면 날짜·종목·방향·수량·가격을 대조합니다.</p><label>KIS 주문번호<input id="stock-order-broker-id" inputmode="numeric"></label><button type="button" id="stock-order-link">주문번호 연결 및 조회</button>':''),null);
+    (stockOrderUnverified(o)?'<p class="order-callout">접수 여부를 확인하지 못했습니다. 주문번호 없이 KIS 주문내역을 조회할 수 있습니다. 이미 접수됐을 수 있어 자동으로 재전송하지 않습니다.</p><button type="button" id="stock-order-check">KIS 접수 내역 확인</button><div id="stock-order-candidates" role="status" aria-live="polite"></div><details><summary>확인한 주문번호 직접 입력 (선택)</summary><p>한국투자증권 주문내역에 번호가 있는 경우에만 입력해주세요.</p><label>KIS 주문번호<input id="stock-order-broker-id" inputmode="numeric"></label><button type="button" id="stock-order-link">주문번호로 접수·체결 확인</button></details>':''),null);
+  const checkButton=$("#stock-order-check");
+  if(checkButton)checkButton.onclick=async()=>{
+    if(checkButton.disabled)return;
+    const result=$("#stock-order-candidates");checkButton.disabled=true;result.textContent="KIS 주문내역을 조회하고 있습니다…";
+    try {
+      const rows=await api("/securities/orders/"+o.id+"/candidates");
+      if(!result.isConnected)return;
+      result.innerHTML=rows.length?'<p>날짜·종목·방향·수량·가격이 같은 주문입니다. 다른 경로로 낸 주문일 수도 있으므로 주문 시각을 확인한 후 선택해주세요. 해외 주문 시각은 현지 기준입니다.</p>'+rows.map(r=>`<p>주문번호 ${esc(r.brokerOrderId)} · ${esc(r.orderDate)} ${esc(r.orderTime||"시각 미제공")} · ${esc(r.symbol)} · ${r.side==="BUY"?"매수":"매도"} ${fmt(r.quantity)}주 · ${money(r.price,orderCurrency(o))} <button type="button" data-order-candidate="${esc(r.brokerOrderId)}">이 주문의 체결 내역 확인</button></p>`).join(""):'<p>조회 시점에 일치하는 주문이 없습니다. 입력할 주문번호가 없으며, 번호를 입력할 필요도 없습니다. 조회 반영이 늦을 수 있어 미접수로 확정하지는 않습니다. 잠시 후 다시 확인해주세요.</p>';
+      $$('[data-order-candidate]',result).forEach(b=>b.onclick=async()=>{
+        if(b.disabled)return;
+        $$('button',result).forEach(button=>button.disabled=true);
+        try {
+          const linked=await api("/securities/orders/"+o.id+"/link","POST",{brokerOrderId:b.dataset.orderCandidate});
+          if(result.isConnected&&$("#modal").open)stockOrderDetail(linked);
+          await stockOrderReload();
+        } catch(e) {if(result.isConnected){$("#modal-error").textContent=e.message;$$('button',result).forEach(button=>button.disabled=false);}}
+      });
+    } catch(e) {if(result.isConnected)result.textContent="주문내역 조회에 실패했습니다. "+e.message+" 주문이 없다는 뜻은 아닙니다.";}
+    finally {checkButton.disabled=false;}
+  };
   const bind=(selector,action,body)=>{const b=$(selector);if(b)b.onclick=async()=>{
     if(b.disabled)return;b.disabled=true;
     try {stockOrderDetail(await api("/securities/orders/"+o.id+"/"+action,"POST",body?body():{}));await stockOrderReload();}

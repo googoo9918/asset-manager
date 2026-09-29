@@ -47,6 +47,8 @@ Controller는 검증된 요청을 Service에 전달합니다. Service는 동일 
 
 ## 테스트
 
+주문 결과가 `UNKNOWN`이고 주문번호가 없으면 주문 상세의 **KIS 접수 내역 확인**으로 조회합니다. 후보 조회는 날짜·종목·거래소·방향·수량·가격을 대조하며 저장 상태를 변경하지 않습니다. 후보가 있어도 사용자가 선택한 뒤 기존 주문번호 검증 절차를 거칩니다. 빈 조회 결과는 확정 거절로 간주하지 않습니다. HTTP 오류에 포함된 KIS의 명시적 실패 응답(`rt_cd=1`, 유효한 `msg_cd`)은 거절 사유를 보존하며, 불명확한 응답은 `UNKNOWN`을 유지합니다. 주문 POST는 재시도하지 않습니다.
+
 - Node만 있을 때: `node tests/page-modules.cjs`
 - Java 21/Gradle 환경: `gradlew.bat test`
 - Playwright 및 Chromium 설치 환경: `node tests/browser-smoke.cjs`

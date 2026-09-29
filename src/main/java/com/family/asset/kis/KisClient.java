@@ -117,9 +117,20 @@ public class KisClient {
     var c=config.credentials(account.getId());
     var accessToken=token(c);
     waitForRequestSlot();
-    return client().post().uri(path).header("authorization","Bearer "+accessToken)
+    try {
+      return client().post().uri(path).header("authorization","Bearer "+accessToken)
         .header("appkey",c.getAppKey()).header("appsecret",c.getAppSecret()).header("tr_id",tr)
         .header("custtype","P").body(params).retrieve().body(JsonNode.class);
+    } catch(RestClientResponseException e) {
+      // KIS can return a structured rejection with a non-2xx HTTP status.
+      // Preserve an explicit failure; malformed/ambiguous responses still remain UNKNOWN.
+      JsonNode body;
+      try {body=json.readTree(e.getResponseBodyAsString());}
+      catch(RuntimeException invalid) {throw e;}
+      if(body!=null&&"1".equals(body.path("rt_cd").asText())
+          &&body.path("msg_cd").asText("").matches("[A-Za-z0-9_]{1,30}"))return body;
+      throw e;
+    }
   }
 
   private List<JsonNode> pages(KisProperties.Credential c, String path, String tr,

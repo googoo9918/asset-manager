@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'msedge'});
  try {
-  const page=await browser.newPage(),errors=[],requests=[];let orders=[],preview=null,enabled=true,loseResponse=false,missingExchange=false,expiredPreview=false;
+  const page=await browser.newPage(),errors=[],requests=[];let orders=[],preview=null,enabled=true,loseResponse=false,missingExchange=false,expiredPreview=false,candidates=[],candidateError=false;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
    const req=route.request(),u=new URL(req.url()),p=u.pathname;
@@ -13,6 +13,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    if(p==='/api/securities/orders')return route.fulfill({json:orders});
    if(p==='/api/securities/holdings')return route.fulfill({json:fixtures(u.href).map(h=>({...h,exchangeCode:missingExchange?null:h.accountId===3?'NAS':'NYS'}))});
    if(p.startsWith('/api/securities/orders/')){
+    if(p.endsWith('/candidates'))return candidateError?route.fulfill({status:503,json:{message:'KIS 조회 실패'}}):route.fulfill({json:candidates});
     if(req.method()==='POST')requests.push({path:p,body:req.postDataJSON()});
     if(p.endsWith('/preview')) {
      const body=req.postDataJSON();preview={...body,id:'preview-1',accountName:'해외 메인',environment:'DEMO',status:'PREVIEW',price:body.orderType==='MARKET'?'0':body.orderType==='CURRENT'?'102.5':body.price,quotePrice:'102.5',quotedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+120000).toISOString(),createdAt:new Date().toISOString(),filledQuantity:'0',remainingQuantity:body.quantity,message:'전송 전'};
@@ -96,6 +97,32 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await field('exchange').selectOption('AMEX');await page.locator('#stock-order-preview').click();await page.locator('#stock-order-send').waitFor();assert.equal(requests.at(-1).body.exchange,'AMEX');
   await page.locator('#close-modal').click();
   assert.equal(await page.locator('#portfolio-table [data-action="holding-order"][data-id="CASH"]').count(),0);
+  const beforeUnknown=requests.length;
+  await page.evaluate(o=>stockOrderDetail({...o,status:'UNKNOWN',brokerOrderId:null,filledQuantity:'0',remainingQuantity:'1'}),preview);
+  for(const label of ['체결 수량','미체결 수량']) {
+    const row=page.locator('#modal-body dt').filter({hasText:new RegExp('^'+label+'$')});
+    assert.equal(await row.count(),1);
+    assert.equal(await row.evaluate(e=>e.nextElementSibling.textContent),'미확인');
+  }
+  assert.match(await page.locator('#modal-body').innerText(),/이미 접수됐을 수/);
+  assert.equal(await page.locator('#stock-order-send').count(),0);
+  assert.equal(await page.locator('#stock-order-sync').count(),0);
+  assert.equal(requests.length,beforeUnknown);
+  await page.locator('#stock-order-check').click();
+  await page.waitForFunction(()=>document.querySelector('#stock-order-candidates').textContent.includes('일치하는 주문이 없습니다'));
+  assert.match(await page.locator('#stock-order-candidates').innerText(),/번호를 입력할 필요도 없습니다/);
+  assert.equal(requests.length,beforeUnknown);
+  candidateError=true;await page.locator('#stock-order-check').click();
+  await page.waitForFunction(()=>document.querySelector('#stock-order-candidates').textContent.includes('조회에 실패'));
+  assert.doesNotMatch(await page.locator('#stock-order-candidates').innerText(),/일치하는 주문이 없습니다/);
+  candidateError=false;candidates=[{brokerOrderId:'456',orderDate:'20260928',orderTime:'103000',symbol:'TEST',side:'BUY',quantity:'1',price:'102.5'}];
+  await page.locator('#stock-order-check').click();await page.locator('[data-order-candidate="456"]').waitFor();
+  assert.equal(requests.length,beforeUnknown); // No automatic link or resend, even with one candidate.
+  await page.locator('[data-order-candidate="456"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-order-candidate="456"]'));
+  assert.equal(requests.length,beforeUnknown+1);
+  assert.match(requests.at(-1).path,/\/link$/);assert.deepEqual(requests.at(-1).body,{brokerOrderId:'456'});
+  await page.locator('#close-modal').click();
   enabled=false;await page.reload();await page.waitForFunction(()=>document.querySelector('#stock-order-new')?.disabled);
   const disabledBefore=requests.length;await page.locator('#portfolio-table [data-action="holding-order"]').click();await page.locator('#modal').waitFor();
   assert.match(await page.locator('#modal-body').innerText(),/비활성화/);assert.equal(requests.length,disabledBefore);
