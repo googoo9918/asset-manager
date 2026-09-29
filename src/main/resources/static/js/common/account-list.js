@@ -38,6 +38,7 @@ async function accounts(type) {
         pct(a.currentBalanceKrw, total) + "%",
         label("AssetStatus", a.status),
         action("account-detail", a.id, "상세") +
+          (a.status==="ACTIVE"&&!a.kisLinked?action("account-adjust",a.id,"잔액 보정"):"")+
           action("account-edit", a.id, "수정") +
           action("account-close", a.id, "해지"),
       ]),

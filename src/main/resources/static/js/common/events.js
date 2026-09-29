@@ -16,6 +16,8 @@ document.addEventListener(
     switch (b.dataset.action) {
       case "account-detail":
         return accountDetail(id);
+      case "account-adjust":
+        return adjustAccount(id);
       case "account-edit":
         return editAccount(acc(id));
       case "account-close":
