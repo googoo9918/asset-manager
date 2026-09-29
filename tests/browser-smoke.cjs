@@ -222,6 +222,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   assert.equal(await page.locator('[name=benefit-source]').inputValue(),'스타B_음식점할인');
   await page.locator('#close-modal').click();
   await page.locator('#kb-import').click();
+  await page.locator('.kb-alternatives > summary').click();
   await page.locator('#modal-body summary').filter({hasText:'연결 설정'}).click();
   await page.locator('#kb-connect').click();
   await page.waitForFunction(()=>document.querySelector('#kb-message').textContent==='Chrome 연결됨');
@@ -231,8 +232,8 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('#modal-body summary').filter({hasText:'별도 로그인 창 사용'}).click();
   await page.locator('#kb-open').click();
   await page.locator('#kb-capture').click();await page.waitForSelector('#kb-card');
-  await page.selectOption('#kb-card','1');await page.locator('#kb-check').click();
-  await page.waitForSelector('#kb-save');
+  await page.selectOption('#kb-card','1');await page.locator('#kb-flow-next').click();
+  await page.waitForSelector('#kb-preview-rows');
   assert.equal(mappingWrites,0); // No source card name in the manually captured table.
   assert.equal(await page.locator('[data-kb-row]').count(),2);
   assert.equal(await page.locator('[data-kb-row]:checked').count(),0);
@@ -240,13 +241,13 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   assert.equal(await page.locator('[data-kb-category="0"]').inputValue(),'22');
   assert.equal(await page.locator('[data-kb-category="2"]').inputValue(),'25');
   assert.equal(kbSaved,null);
-  await page.locator('#kb-save').click();assert.match(await page.locator('#kb-save-message').innerText(),/필수 확인란에 체크/);
+  await page.locator('#kb-flow-next').click();assert.match(await page.locator('#kb-save-message').innerText(),/필수 확인란에 체크/);
   assert.equal(await page.locator('#kb-save-message').evaluate(el=>{
     const r=el.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight&&document.activeElement===el;
   }),true);
-  assert.equal(await page.locator('#kb-save').isEnabled(),true);
+  assert.equal(await page.locator('#kb-flow-next').isEnabled(),true);
   assert.equal(kbSaved,null);
-  await page.locator('#kb-confirm-card').check();await page.locator('#kb-save').click();
+  await page.locator('#kb-confirm-card').check();await page.locator('#kb-flow-next').click();
   assert.match(await page.locator('#kb-save-message').innerText(),/저장할 내역을 선택/);
   await page.locator('#kb-confirm-card').check();await page.selectOption('#kb-category','1');
   await page.selectOption('[data-kb-category="2"]','23');
@@ -258,13 +259,13 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('#kb-select-all').check();
   assert.equal(await page.locator('[data-kb-row]:checked').count(),2);
   assert.match(await page.locator('#kb-selection-summary').innerText(),/2건 중 2건 선택/);
-  await page.locator('#kb-save').click();
+  await page.locator('#kb-flow-next').click();
   await page.waitForSelector('#question-dialog[open]');
   assert.match(await page.locator('#question-message').innerText(),/2건.*31,000원/);
   assert.equal(kbSaved,null);await page.locator('#question-cancel').click();
   await page.waitForFunction(()=>document.querySelector('#kb-message').textContent.includes('등록을 취소'));
   assert.equal(kbSaved,null);
-  await page.locator('#kb-save').click();await page.waitForSelector('#question-dialog[open]');
+  await page.locator('#kb-flow-next').click();await page.waitForSelector('#question-dialog[open]');
   await page.locator('#question-form button[type="submit"]').click();
   await page.waitForFunction(()=>document.querySelector('#kb-message').textContent.includes('2건을 저장'));
   assert.deepEqual(kbSaved,{previewId:'kb-test',indices:[0,2],selections:[{index:0,categoryId:'1',remember:true},{index:2,categoryId:'23',remember:false}],confirmed:true,affectBalance:false});
@@ -276,23 +277,24 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.goto('http://asset.test/transactions');await page.waitForSelector('#content[aria-busy="false"]');
   assert.match(await page.locator('#entries').innerText(),/테스트 카페/);
   await page.goto('http://asset.test/cards');await page.waitForSelector('#content[aria-busy="false"]');
-  await page.locator('#kb-import').click();await page.locator('#kb-collect').click();
+  await page.locator('#kb-import').click();await page.locator('#kb-flow-next').click();
   await page.waitForFunction(()=>document.querySelector('#kb-message').textContent.includes('이용내역 3건'));
   assert.match(await page.locator('#kb-evidence').innerText(),/카드별 수집 요약/);
   assert.match(await page.locator('#kb-evidence').innerText(),/매출전표 1건/);
   assert.equal(await page.locator('#kb-source-card option').count(),2);
-  await page.selectOption('#kb-card','1');await page.locator('#kb-check').click();
-  await page.waitForSelector('#kb-save');
+  await page.selectOption('#kb-card','1');await page.locator('#kb-flow-next').click();
+  await page.waitForSelector('#kb-preview-rows');
   assert.equal(mappingWrites,1);assert.equal(savedMappings[0].sourceCard,'카드 A');
   assert.equal(await page.locator('#kb-card').isDisabled(),true);
   assert.match(await page.locator('#kb-preview').innerText(),/자동결제A/);
   assert.doesNotMatch(await page.locator('#kb-preview').innerText(),/자동결제B/);
   assert.match(await page.locator('#kb-preview').textContent(),/포인트리 연결 필요/);
   assert.equal(await page.locator('[data-kb-row]').count(),1);
+  await page.locator('#kb-flow-back').click();
   await page.selectOption('#kb-source-card','1');assert.equal(await page.locator('#kb-save').count(),0);
   assert.equal(await page.locator('#kb-card').inputValue(),''); // Never reuse another source card's selection.
   await page.selectOption('#kb-card','1');
-  await page.locator('#kb-check').click();await page.waitForSelector('#kb-save');
+  await page.locator('#kb-flow-next').click();await page.waitForSelector('#kb-preview-rows');
   assert.match(await page.locator('#kb-preview').innerText(),/자동결제B/);
   assert.doesNotMatch(await page.locator('#kb-preview').innerText(),/자동결제A/);
   await page.locator('#close-modal').click();
@@ -301,7 +303,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   assert.equal(await page.locator('#kb-card').inputValue(),'1');
   assert.equal(await page.locator('#kb-card').isDisabled(),true);
   assert.equal(mappingWrites,2);
-  await page.locator('#kb-check').click();await page.waitForSelector('#kb-save');
+  await page.locator('#kb-flow-next').click();await page.waitForSelector('#kb-preview-rows');
   assert.equal(mappingWrites,2);
   await page.locator('#close-modal').click();
   await page.reload();await page.waitForSelector('#content[aria-busy="false"]');
@@ -316,13 +318,13 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.waitForSelector('#kb-source-card');
   assert.equal(await page.locator('#kb-card').inputValue(),'1');
   assert.equal(await page.locator('#kb-card').isDisabled(),true);
-  await page.locator('#kb-check').click();await page.waitForSelector('#kb-save');
+  await page.locator('#kb-flow-next').click();await page.waitForSelector('#kb-preview-rows');
   assert.equal(await page.locator('[data-kb-row]').count(),1);
   assert.equal(await page.locator('#kb-balance').inputValue(),'true');
   assert.equal(await page.locator('#kb-balance').isDisabled(),true);
   assert.match(await page.locator('#kb-preview').innerText(),/포인트리 사용액은 생활비에서 차감/);
   await page.locator('#kb-select-all').check();await page.locator('#kb-confirm-card').check();await page.selectOption('#kb-category','1');
-  await page.locator('#kb-save').click();await page.waitForSelector('#question-dialog[open]');
+  await page.locator('#kb-flow-next').click();await page.waitForSelector('#question-dialog[open]');
   assert.match(await page.locator('#question-message').innerText(),/생활비에서 500원 차감/);
   await page.locator('#question-form button[type="submit"]').click();await page.waitForSelector('#kb-view-card');
   assert.equal(kbSaved.affectBalance,true);
@@ -339,7 +341,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('#kb-import').click();assert.match(await page.locator('#notice').innerText(),/파일이 로드되지/);
   kbMissingModule=false;
   await page.reload();await page.waitForSelector('#content[aria-busy="false"]');
-  await page.locator('#kb-import').click();await page.waitForSelector('#kb-collect');
+  await page.locator('#kb-import').click();await page.waitForSelector('#kb-flow-next');
   await page.locator('#close-modal').click();
   // Account-level card payments: one input for multiple cards, then one completed calendar item.
   const due=new Date().toISOString().slice(0,10);

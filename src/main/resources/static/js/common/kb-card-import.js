@@ -62,44 +62,76 @@ function kbCollectionSummary(result){
 }
 function openKbImport() {
   modal('KB국민카드 가져오기', `
+    <div class="kb-import-shell">
     <ol class="order-progress kb-import-steps" aria-label="카드 내역 가져오기 단계"><li id="kb-step-collect" aria-current="step">1. 수집</li><li id="kb-step-map">2. 중복 확인</li><li id="kb-step-save">3. 거래 등록</li></ol>
-    <div class="kb-collection-setup"><h3>새로운 내역만 빠르게</h3><details id="kb-collection-options" open><summary>수집 방식·조회 범위</summary><p>Chrome의 KB 이용내역 화면에서 기간을 선택해주세요. 저장한 전표는 재사용합니다.</p>
+    <p id="kb-message" class="kb-flow-message" role="status" tabindex="-1"></p>
+    <section id="kb-stage-collect" class="kb-flow-stage" aria-labelledby="kb-collect-title">
+    <div class="kb-flow-heading"><span class="kb-eyebrow">KB국민카드 · 이용내역</span><h3 id="kb-collect-title" tabindex="-1">새 내역만 가져오세요.</h3><p>이미 가져온 전표는 건너뜁니다.<br>거래 등록은 내역을 확인한 뒤 선택하세요.</p></div>
+    <div class="kb-connect-card"><div><span class="kb-connect-dot" aria-hidden="true"></span><p id="kb-connection" role="status">Chrome 연결 확인 중…</p></div><button type="button" id="kb-existing">KB 로그인 열기 ↗</button></div>
+    <div class="kb-collection-setup"><div class="kb-mode-label"><span>기본 수집 방식</span><strong id="kb-mode-title">새로 필요한 전표만</strong></div><details id="kb-collection-options"><summary>수집 방식 변경</summary><p>조회 기간은 Chrome의 KB 이용내역 화면에서 선택합니다.</p>
     <label>전표 수집 방식<select id="kb-receipt-mode"><option value="incremental">새로 필요한 전표만 (기본)</option><option value="none">이용내역만 · 전표 조회 생략</option><option value="all">선택 기간의 전표 모두 다시 조회</option></select></label>
     <p id="kb-mode-help" class="muted">취소·매입 상태 변경 확인을 위해 이용내역 목록은 전체 확인합니다. 저장한 전표 팝업은 다시 열지 않습니다.</p></details>
-    <div class="toolbar"><button type="button" id="kb-collect" class="primary">필요한 전표 가져오기</button><button type="button" id="kb-existing">KB 로그인 화면 열기</button></div></div>
-    <div class="kb-collection-status"><p id="kb-message" role="status" tabindex="-1"></p><progress id="kb-progress" hidden aria-label="이용내역 확인 진행률"></progress><div id="kb-collection-counts" class="kb-collection-counts"></div></div>
-    <div class="toolbar"><button type="button" id="kb-latest">저장된 수집 결과 불러오기</button><span class="muted">수집만으로 거래가 등록되지는 않습니다.</span></div>
-    <p id="kb-connection" role="status">Chrome 연결 확인 중…</p>
+    <button type="button" id="kb-collect" hidden>필요한 전표 가져오기</button></div>
+    <div class="kb-resume-card"><div><strong>이전에 가져온 내역</strong><p id="kb-last-summary">저장된 결과를 확인하고 있습니다.</p></div><button type="button" id="kb-latest">이어서 검토 →</button></div>
+    <details class="kb-alternatives"><summary>연결 도움말 · 다른 가져오기 방법</summary>
     <details id="kb-setup"><summary>최초 연결 설정</summary>
       <p>확장 프로그램에 아래 연결코드를 한 번만 등록해주세요. 이후 앱을 다시 실행해도 자동으로 연결합니다.</p>
       <button type="button" id="kb-connect">연결 상태 확인</button><p id="kb-code"></p>
     </details>
-    <p class="muted">수집 후 카드별 내역과 전표를 확인할 수 있습니다. 가계부 거래 저장은 별도로 선택한 내역만 반영합니다.</p>
     <details><summary>파일 또는 현재 화면에서 가져오기</summary>
     <label>파일 선택 (CSV·TSV·XLSX·확장 프로그램 파일, 5MB 이하)<input id="kb-file" type="file" accept=".csv,.tsv,.xlsx,.kbcard.json"></label>
     <button type="button" id="kb-connected-read">현재 화면만 읽기</button></details>
     <details><summary>별도 로그인 창 사용 (기존 Chrome의 인증은 공유되지 않음)</summary>
       <div class="toolbar"><button type="button" id="kb-open">별도 로그인 창 열기</button><button type="button" id="kb-capture">조회 결과 읽기</button><button type="button" id="kb-close">별도 로그인 창 종료</button></div>
     </details>
-    <div id="kb-evidence"></div><div id="kb-mapping"></div><div id="kb-preview"></div>`, null);
+    </details></section>
+    <div class="kb-collection-status"><progress id="kb-progress" hidden aria-label="이용내역 확인 진행률"></progress><div id="kb-collection-counts" class="kb-collection-counts"></div></div>
+    <section id="kb-stage-map" class="kb-flow-stage" hidden aria-labelledby="kb-map-title"><div class="kb-flow-heading"><span class="kb-eyebrow">02 · 카드 연결</span><h3 id="kb-map-title" tabindex="-1">어느 카드에 등록할까요?</h3><p>카드를 선택하면 중복과 등록 가능한 내역을 확인합니다.</p></div><div id="kb-mapping"></div><div id="kb-evidence"></div></section>
+    <section id="kb-stage-save" class="kb-flow-stage" hidden aria-labelledby="kb-review-title"><div class="kb-flow-heading"><span class="kb-eyebrow">03 · 최종 검토</span><h3 id="kb-review-title" tabindex="-1">등록할 거래를 확인하세요.</h3></div><div id="kb-preview"></div></section>
+    </div>`, null);
+  $('#editor > footer').insertAdjacentHTML('afterbegin','<div id="kb-flow-footer"><button type="button" id="kb-flow-back" hidden>이전</button><div><span id="kb-flow-hint">KB에서 조회 기간을 선택한 뒤 시작하세요.</span><button type="button" id="kb-flow-next" class="primary">새 내역 가져오기</button></div></div>');
   let tables=[], preview=null, busy=false, savedMappings=[], receiptRows=[];
-  const step=name=>['collect','map','save'].forEach(s=>{const el=$('#kb-step-'+s);if(s===name)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});
+  let currentStep='collect',lastCollection=null;
+  const footer=()=>{
+    if(!$('#kb-flow-footer'))return;
+    $('#kb-flow-back').hidden=currentStep==='collect';$('#kb-flow-back').disabled=busy;
+    const selected=$$('[data-kb-row]:checked').length;
+    $('#kb-flow-next').disabled=busy;
+    $('#kb-flow-next').textContent=busy?'처리 중…':currentStep==='collect'?($('#kb-receipt-mode').value==='all'?'전체 전표 다시 조회':$('#kb-receipt-mode').value==='none'?'이용내역만 가져오기':'새 내역 가져오기'):currentStep==='map'?'중복 확인하고 계속':preview?`선택한 ${selected}건 등록`:'다른 카드 검토';
+    $('#kb-flow-hint').textContent=currentStep==='collect'?($('#kb-receipt-mode').value==='all'?'저장 여부와 관계없이 다시 조회합니다.':'선택한 기간의 내역을 확인합니다.'):currentStep==='map'?'아직 거래를 등록하지 않습니다.':preview?'선택한 거래만 등록됩니다.':'거래 등록이 완료되었습니다.';
+  };
+  const step=name=>{
+    currentStep=name;
+    ['collect','map','save'].forEach(s=>{const el=$('#kb-step-'+s);if(s===name)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');$('#kb-stage-'+s).hidden=s!==name;});
+    $('.kb-import-shell').dataset.step=name;
+    $('#modal-body').scrollTop=0;footer();
+    $(name==='collect'?'#kb-collect-title':name==='map'?'#kb-map-title':'#kb-review-title').focus({preventScroll:true});
+  };
+  $('#kb-flow-back').onclick=()=>{if(!busy)step(currentStep==='save'?'map':'collect');};
+  $('#kb-flow-next').onclick=()=>{
+    if(busy)return;
+    if(currentStep==='save'&&!preview){step('map');return;}
+    $(currentStep==='collect'?'#kb-collect':currentStep==='map'?'#kb-check':'#kb-save')?.click();
+  };
+  step('collect');
   const modeHelp={incremental:'취소·매입 상태 변경 확인을 위해 이용내역 목록은 전체 확인합니다. 저장한 전표 팝업은 다시 열지 않습니다.',none:'전표 팝업을 열지 않고 이용내역만 가져옵니다. 전표 업종에 따른 자동 분류는 제공되지 않습니다.',all:'저장된 전표가 있어도 선택 기간의 모든 전표를 다시 엽니다. 전표 내용을 재확인할 때만 사용하세요.'};
   $('#kb-receipt-mode').onchange=()=>{
     const mode=$('#kb-receipt-mode').value;$('#kb-mode-help').textContent=modeHelp[mode];
     $('#kb-collect').textContent=mode==='none'?'이용내역만 가져오기':mode==='all'?'전체 전표 다시 가져오기':'필요한 전표 가져오기';
+    $('#kb-mode-title').textContent=mode==='none'?'이용내역만':mode==='all'?'전체 전표 다시 조회':'새로 필요한 전표만';footer();
   };
   const counts=stats=>{$('#kb-collection-counts').innerHTML=[['새로 조회',stats.fetched],['저장 전표 재사용',stats.reused],['전표 확인 필요',stats.failed]].map(([label,n])=>`<div><span>${label}</span><strong>${fmt(n||0)}<small>건</small></strong></div>`).join('');};
   const act = fn => async () => {
     if(busy) return;
     busy=true; $('#kb-message').textContent='처리 중입니다…';
+    footer();
     if($('#kb-save-message'))$('#kb-save-message').textContent='';
     const buttons=$$('#modal-body button').map(b=>[b,b.disabled]);buttons.forEach(([b])=>b.disabled=true);
     $('#kb-receipt-mode').disabled=true;
     try { await fn(); } catch(e) {
       if($('#kb-connection')===connectionNode){
         $('#kb-message').textContent=e.message;
-        const target=$('#kb-save-message')||$('#kb-message');
+        const target=currentStep==='save'&&$('#kb-save-message')?$('#kb-save-message'):$('#kb-message');
         target.textContent=e.message;
         target.scrollIntoView({block:'nearest'});
         target.focus({preventScroll:true});
@@ -107,6 +139,7 @@ function openKbImport() {
     }
     finally {
       busy=false; buttons.forEach(([b,disabled])=>b.disabled=disabled);
+      if($('#kb-connection')===connectionNode)footer();
       if($('#kb-connection')===connectionNode){$('#kb-receipt-mode').disabled=false;$('#kb-progress').hidden=true;}
       if($('#kb-connection')===connectionNode && $('#kb-message').textContent==='처리 중입니다…')
         $('#kb-message').textContent='처리가 완료되었습니다.';
@@ -119,6 +152,7 @@ function openKbImport() {
     if($('#kb-connection')!==connectionNode)return;
     $('#kb-code').textContent='연결코드: '+result.code;
     connectionNode.textContent=result.connected?'Chrome 연결됨':'자동 연결 대기 중 · 처음 사용한다면 연결 설정을 펼쳐주세요.';
+    connectionNode.dataset.connected=String(!!result.connected);
   }
   $('#kb-connect').onclick=act(async()=>{
     await checkConnection();
@@ -126,17 +160,17 @@ function openKbImport() {
   });
   checkConnection().catch(e=>{if($('#kb-connection')===connectionNode)connectionNode.textContent=e.message;});
   $('#kb-connected-read').onclick=act(async()=>loaded(await api('/kb-card/capture','POST',{})));
-  $('#kb-latest').onclick=act(async()=>showCollection(await api('/kb-card/latest')));
+  $('#kb-latest').onclick=act(async()=>showCollection(lastCollection||await api('/kb-card/latest')));
   // The saved collection survives closing this dialog and restarting the app.
   act(async()=>{
     try{
       const job=await api('/kb-card/collection');
       if($('#kb-connection')!==connectionNode)return;
-      if(job.state==='running'){await followCollection();return;}
+      if(job.state==='running'){step('collect');await followCollection();return;}
       const result=await api('/kb-card/latest');
-      if($('#kb-connection')===connectionNode)await showCollection(result);
+      if($('#kb-connection')===connectionNode){lastCollection=result;$('#kb-last-summary').textContent=`${result.range} · ${result.expected}건`;$('#kb-message').textContent='';}
     }catch(e){
-      if($('#kb-connection')===connectionNode)$('#kb-message').textContent=e.message==='저장된 수집 결과가 없습니다.'?'KB에서 조회 기간을 선택하고 필요한 전표 가져오기를 눌러주세요.':'최근 수집 결과를 불러오지 못했습니다. 저장된 수집 결과 불러오기로 다시 시도해주세요.';
+      if($('#kb-connection')===connectionNode){$('#kb-last-summary').textContent=e.message==='저장된 수집 결과가 없습니다.'?'아직 가져온 내역이 없습니다.':'저장된 결과 확인이 필요합니다.';$('#kb-message').textContent='';}
     }
   })();
   $('#kb-collect').onclick=act(async()=>{
@@ -163,6 +197,7 @@ function openKbImport() {
   }
   async function showCollection(result){
     if($('#kb-connection')!==connectionNode)return;
+    lastCollection=result;$('#kb-last-summary').textContent=`${result.range} · ${result.expected}건`;
     if(!result?.tables?.some(t=>t.rows.length>1)){
       $('#kb-message').textContent='선택한 기간에 이용내역이 없습니다. KB에서 조회 기간을 변경해주세요.';
       $('#kb-evidence').innerHTML='';$('#kb-mapping').innerHTML='';$('#kb-preview').innerHTML='';counts({});preview=null;return;
@@ -203,11 +238,12 @@ function openKbImport() {
     if(!tables.length) throw new Error('읽을 데이터가 없습니다.');
     preview=null; $('#kb-preview').innerHTML=''; $('#kb-evidence').innerHTML='';
     $('#kb-message').textContent=result.source==='download'?'브라우저에서 내려받은 최신 파일을 읽었습니다.':'표를 읽었습니다. 카드와 각 열의 의미를 확인해주세요.';
-    $('#kb-mapping').innerHTML=`<h3>거래내역에 등록할 카드 연결</h3><details><summary>표 읽기 설정</summary><label>가져올 표 <select id="kb-table">${tables.map((t,i)=>`<option value="${i}">${esc(t.name)} (${t.rows.length}행)</option>`).join('')}</select></label>
+    $('#kb-mapping').innerHTML=`<details class="kb-reading-options"><summary>표 읽기 설정</summary><label>가져올 표 <select id="kb-table">${tables.map((t,i)=>`<option value="${i}">${esc(t.name)} (${t.rows.length}행)</option>`).join('')}</select></label>
       <label>열 제목이 있는 행 <input id="kb-header" type="number" min="1" value="1"></label></details>
       <div id="kb-columns"></div>`;
     $('#kb-table').onchange=()=>{ $('#kb-header').value=1; mapping(); };
     $('#kb-header').onchange=mapping; mapping();
+    step('map');
   }
   $('#kb-capture').onclick=act(async()=>{
     invalidate();$('#kb-mapping').innerHTML='';
@@ -227,16 +263,17 @@ function openKbImport() {
     const names=sheet.rows[header];
     const sourceCardIndex=names.findIndex(n=>['이용카드명','카드명'].includes(String(n).replace(/\s/g,'')));
     const sourceCards=sourceCardIndex<0?[]:[...new Set(sheet.rows.slice(header+1).map(r=>r[sourceCardIndex]).filter(Boolean))];
-    $('#kb-columns').innerHTML=`<p>처음 한 번만 앱 카드를 선택해주세요. 미리보기 시 연결을 저장하고, 다음 수집·등록부터 자동 적용합니다. 거래는 최종 확인 후에만 등록됩니다.</p>
+    $('#kb-columns').innerHTML=`<div class="kb-card-link-grid">
       ${sourceCards.length?`<label>수집된 카드 <select id="kb-source-card">${sourceCards.map((c,i)=>`<option value="${i}">${esc(c)}</option>`).join('')}</select></label>`:''}
-      <label>앱에 연결할 카드 <select id="kb-card"><option value="">카드 선택</option>${own(state.cards).filter(c=>c.status==='ACTIVE').map(c=>`<option value="${c.id}">${esc(c.cardName)} · ${esc(label('OwnerCode',c.ownerCode))}</option>`).join('')}</select></label>
+      <label>앱에 연결할 카드 <select id="kb-card"><option value="">등록할 카드 선택</option>${own(state.cards).filter(c=>c.status==='ACTIVE').map(c=>`<option value="${c.id}">${esc(c.cardName)} · ${esc(label('OwnerCode',c.ownerCode))}</option>`).join('')}</select></label></div>
+      <p id="kb-saved-mapping" class="kb-link-status"></p>
       <details><summary>자동 인식된 열 확인·수정</summary><div class="form-grid">${kbFields.map(([field,label,aliases])=>{
         const index=names.findIndex(n=>aliases.includes(String(n).replace(/\s/g,'')));
         return `<label>${label}<select id="kb-col-${field}"><option value="-1">${field==='approvalNumber'?'없음':'열 선택'}</option>${names.map((n,i)=>`<option value="${i}" ${i===index?'selected':''}>${i+1}. ${esc(n||'(빈 제목)')}</option>`).join('')}</select></label>`;
       }).join('')}</div>
       <p class="muted">승인 상태·할부개월 열이 없는 경우 자동으로 정상/일시불로 추정하지 않습니다. 화면에 해당 항목이 있는 표를 선택해주세요.</p>
       ${table(names,sheet.rows.slice(header+1,header+6).map(r=>r.map(esc)))}</details>
-      <p id="kb-saved-mapping"></p><button type="button" id="kb-check">미리보기 · 중복 확인</button>`;
+      <button type="button" id="kb-check" hidden>미리보기 · 중복 확인</button>`;
     $$('#kb-columns select').forEach(el=>el.onchange=invalidate);
     const applyMapping=()=>{
       invalidate();
@@ -245,7 +282,7 @@ function openKbImport() {
       $('#kb-card').disabled=!!saved;
       $('#kb-saved-mapping').textContent=saved
         ? `연결 저장됨 · ${saved.sourceCard} → ${state.cards.find(c=>eq(c.id,saved.cardId))?.cardName||'카드 확인 필요'} → ${accName(saved.accountId)}${saved.pointPayment?' · 포인트리 거래 등록 시 사용액 차감':''}`
-        : sourceCards.length?'아직 연결되지 않은 카드입니다. 카드 선택 후 미리보기를 누르면 연결을 저장합니다.':'원본에 이용 카드명이 없어 연결을 저장할 수 없습니다. 이번 내역의 카드를 선택해주세요.';
+        : sourceCards.length?'처음 한 번 연결하면 다음부터 자동 선택됩니다.':'이번 내역을 등록할 카드를 선택해주세요.';
     };
     if($('#kb-source-card'))$('#kb-source-card').onchange=applyMapping;
     applyMapping();
@@ -275,6 +312,7 @@ function openKbImport() {
     });
   }
   function drawPreview(cardId,errors) {
+    $('#kb-review-title').textContent='등록할 거래를 확인하세요.';
     step('save');
     const card=state.cards.find(c=>eq(c.id,cardId));
     const pointDebit=preview.rows.some(x=>x.status==='READY'&&x.row.pointPayment);
@@ -288,11 +326,11 @@ function openKbImport() {
     $('#kb-preview').innerHTML=`<h3>거래내역 등록 · ${esc(card.cardName)}</h3>
       <p>등록 가능한 내역 ${preview.rows.filter(x=>x.status==='READY').length}건. 중복·취소·확인이 필요한 내역은 등록에서 제외됩니다.</p>
       ${errors.length?`<details><summary>읽지 못한 행 ${errors.length}건 (저장 제외)</summary><p>${errors.map(esc).join('<br>')}</p></details>`:''}
-      <label><input type="checkbox" id="kb-select-all">등록 가능한 내역 전체 선택</label>
+      <div class="kb-review-toolbar"><label><input type="checkbox" id="kb-select-all">등록 가능한 내역 전체 선택</label><label>표시할 내역<select id="kb-review-filter"><option value="READY">등록 가능 ${preview.rows.filter(x=>x.status==='READY').length}건</option><option value="all">전체 ${preview.rows.length}건</option><option value="other">중복·확인 필요 ${preview.rows.filter(x=>x.status!=='READY').length}건</option></select></label></div>
       <div id="kb-preview-rows">${table(['선택','이용일','가맹점 / 업종','원화 금액','결제','분류 / 근거','확인 결과'],preview.rows.map(x=>[
         x.status==='READY'?`<input type="checkbox" data-kb-row="${x.index}" aria-label="${esc(x.row.merchant)} 저장">`:'—',
         esc(x.row.date),esc(x.row.merchant)+`<div class="muted">${esc(x.row.industry||'전표 업종 없음')}</div>`,krw(x.row.amount),x.row.pointPayment?'포인트리':x.row.installmentMonths===1?'일시불':x.row.installmentMonths+'개월',
-        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',esc(x.reason)]))}</div>
+        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',statusBadge(x.reason,x.status==='READY'?'success':'neutral')]),[0,2,3,5,6])}</div>
       <div class="toolbar pagination"><button type="button" id="kb-preview-prev">이전</button><span id="kb-preview-page" role="status"></span><button type="button" id="kb-preview-next">다음</button></div>
       <label>등록 가능한 내역의 분류 일괄 변경 <select id="kb-category">${categoryOptions(null)}</select></label>
       <details><summary>카테고리 추가</summary><label>추가할 위치 <select id="kb-new-parent"><option value="">새 대분류</option>${state.categories.filter(c=>c.active&&c.transactionType==='EXPENSE'&&!c.parentId).map(c=>`<option value="${c.id}">${esc(c.name)} 아래 중분류</option>`).join('')}</select></label><label>이름 <input id="kb-new-name" maxlength="80"></label><button type="button" id="kb-add-category">카테고리 추가</button></details>
@@ -300,15 +338,19 @@ function openKbImport() {
       <p id="kb-selection-summary" role="status"></p>
       <label><input type="checkbox" id="kb-confirm-card">카드·금액·분류와 잔액 반영 방법을 확인했습니다. (필수)</label>
       <p id="kb-save-message" class="error" role="alert" tabindex="-1"></p>
-      <button type="button" id="kb-save" class="primary">분류 확인 후 최종 등록</button>`;
+      <button type="button" id="kb-save" hidden>분류 확인 후 최종 등록</button>`;
     let previewPage=0;
     const drawPreviewPage=()=>{
-      const rows=$$('#kb-preview-rows tbody tr'),pages=Math.max(1,Math.ceil(preview.rows.length/15));
-      rows.forEach((row,i)=>row.hidden=i<previewPage*15||i>=(previewPage+1)*15);
-      $('#kb-preview-page').textContent=`${previewPage+1} / ${pages} 페이지 · ${preview.rows.length}건 · 선택·분류는 페이지 이동 후에도 유지됩니다.`;
+      const rows=$$('#kb-preview-rows tbody tr'),filter=$('#kb-review-filter').value;
+      const indices=preview.rows.map((r,i)=>({r,i})).filter(({r})=>filter==='all'||(filter==='READY'?r.status==='READY':r.status!=='READY')).map(({i})=>i);
+      const pages=Math.max(1,Math.ceil(indices.length/15));previewPage=Math.max(0,Math.min(previewPage,pages-1));
+      const visible=new Set(indices.slice(previewPage*15,previewPage*15+15));
+      rows.forEach((row,i)=>row.hidden=!visible.has(i));
+      $('#kb-preview-page').textContent=`${previewPage+1} / ${pages} 페이지 · ${indices.length}건`;
       $('#kb-preview-prev').disabled=previewPage===0;$('#kb-preview-next').disabled=previewPage===pages-1;
     };
     $('#kb-preview-prev').onclick=()=>{previewPage--;drawPreviewPage();};$('#kb-preview-next').onclick=()=>{previewPage++;drawPreviewPage();};drawPreviewPage();
+    $('#kb-review-filter').onchange=()=>{previewPage=0;drawPreviewPage();};
     $('#kb-category').onchange=()=>{
       if($('#kb-category').value)$$('[data-kb-category]').forEach(el=>el.value=$('#kb-category').value);
     };
@@ -332,6 +374,7 @@ function openKbImport() {
       $('#kb-selection-summary').textContent=rows.length
         ? `등록 가능한 ${rows.length}건 중 ${selected}건 선택 · 등록할 내역을 선택하고 아래 필수 확인란에 체크해주세요.`
         : '등록 가능한 내역이 없습니다. 중복 또는 확인이 필요한 내역을 확인해주세요.';
+      footer();
     };
     $('#kb-select-all').onchange=()=>{const checked=$('#kb-select-all').checked;$$('[data-kb-row]').forEach(el=>el.checked=checked);updateSelection();};
     $$('[data-kb-row]').forEach(el=>el.onchange=updateSelection);
@@ -353,8 +396,10 @@ function openKbImport() {
       }
       const result=await api('/kb-card/commit','POST',{previewId:preview.previewId,indices,selections,confirmed:true,affectBalance:balance==='true'});
       $('#kb-preview').innerHTML=''; preview=null;
+      $('#kb-review-title').textContent='거래 등록을 마쳤습니다.';
       $('#kb-message').textContent=`${result.imported}건을 저장했습니다. ${card.cardName}에 연결된 지출 거래로 등록되어 거래내역과 카드 사용내역에서 조회할 수 있습니다. 다른 카드의 내역은 수집된 카드를 변경해 이어서 등록해주세요.`;
       $('#kb-preview').innerHTML='<button type="button" id="kb-view-card">등록한 카드 사용내역 보기</button>';
+      footer();
       $('#kb-view-card').onclick=run(()=>cardDetail(cardId));
       await loadBase(); await renderPage();
     });

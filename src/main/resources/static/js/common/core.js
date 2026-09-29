@@ -225,6 +225,7 @@ function formData(root) {
 }
 let submitModal = null;
 function modal(title, html, onSave) {
+  $("#kb-flow-footer")?.remove();
   $("#modal-title").textContent = title;
   $("#modal-body").innerHTML = html;
   $("#modal-error").textContent = "";
