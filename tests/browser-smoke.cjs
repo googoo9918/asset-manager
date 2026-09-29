@@ -116,7 +116,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('[data-owner=WIFE]').click();await page.waitForSelector('#content[aria-busy="false"]');
   assert.equal(await page.locator('[data-owner=WIFE]').getAttribute('aria-pressed'),'true');
   await page.locator('[data-owner=JOINT]').click();await page.waitForSelector('#content[aria-busy="false"]');
-  await page.locator('#portfolio-distribution summary').click();
+  await page.locator('#security-section-tabs a[href="#security-allocation"]').click();
   await page.locator('[data-layout=pie]').click();assert.equal(await page.locator('#portfolio-chart svg').count(),1);
   await page.locator('#portfolio-chart [data-chart-tip]').first().evaluate(el=>el.focus({preventScroll:true}));await page.waitForSelector('#chart-tooltip',{state:'visible'});
   await page.locator('#security-section-tabs a[href="#security-accounts"]').click();

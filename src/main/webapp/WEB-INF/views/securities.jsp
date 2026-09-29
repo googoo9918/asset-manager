@@ -2,7 +2,7 @@
 <%-- securities 화면 구조. 데이터 조회와 이벤트는 js/pages/securities.js에서 관리한다. --%>
 <%@ include file="common/header.jspf" %>
 <template id="page-template">
-    <div class="section-links" id="security-section-tabs" aria-label="증권 화면"><a href="#security-portfolio">보유 종목</a><a href="#security-orders">주문 내역</a><a href="#security-accounts">계좌 관리</a><a href="#security-history">등락률 이력</a><a href="#security-trend">자산 추이</a></div>
+    <div class="section-links" id="security-section-tabs" aria-label="증권 화면"><a href="#security-portfolio">보유 종목</a><a href="#security-allocation">종목별 비중</a><a href="#security-orders">주문 내역</a><a href="#security-accounts">계좌 관리</a><a href="#security-history">등락률 이력</a><a href="#security-trend">자산 추이</a></div>
     <div id="security-overview" class="security-overview"></div>
     <section class="panel" id="security-accounts"><h2>증권계좌</h2>
         <div class="toolbar">
@@ -27,10 +27,14 @@
         <p id="portfolio-results" class="muted" role="status"></p>
         <div id="portfolio-table"></div>
         <p class="muted">통합 평단가는 수량 가중평균입니다. 수익률은 환율 손익을 제외하며, 당일 등락률은 표시된 시세일 기준입니다.</p>
-        <details id="portfolio-distribution"><summary>전체 자산 비중 보기</summary>
+    </section>
+    <section class="panel" id="security-allocation"><div class="panel-heading"><div><h2>종목별 자산 비중</h2><p class="muted">선택한 소유자의 보유 종목을 원화 평가금액으로 비교합니다. 같은 종목·통화는 계좌를 합산합니다.</p></div></div>
+        <div class="toolbar"><label><input type="checkbox" id="allocation-cash">예수금 포함</label>
             <div id="portfolio-layout" class="segmented" role="group" aria-label="포트폴리오 형태"><button type="button" data-layout="bar">막대</button><button type="button" data-layout="pie">원형</button></div>
-            <div id="portfolio-chart"></div>
-        </details>
+        </div>
+        <p id="allocation-summary" role="status"></p>
+        <div id="portfolio-chart"></div>
+        <p class="muted">비중은 표시된 평가금액 합계 기준입니다. 저장된 시세·계좌 환율을 사용하며, 반올림으로 비중 합계가 100%와 다를 수 있습니다.</p>
     </section>
     <section class="panel" id="security-orders"><div class="panel-heading"><h2>주식 주문</h2><span id="stock-order-settings" class="muted"></span></div>
         <div class="toolbar"><button type="button" id="stock-order-new" class="primary">매수 / 매도</button><button type="button" id="stock-order-reload">주문 내역 새로고침</button></div>

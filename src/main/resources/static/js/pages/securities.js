@@ -110,12 +110,20 @@ async function securities() {
   };
   $("#security-search").oninput=draw; draw();
   let layout=preference("portfolio-layout","bar");
+  const allocationRows=sortPortfolio(enrichedPortfolio(portfolio,holdings,aa),"value","desc");
+  const drawAllocation=()=>{
+    const rows=allocationRows.filter(p=>$('#allocation-cash').checked||p.symbol!=="CASH");
+    const allocationTotal=sum(rows.map(p=>p.valueKrw));
+    $('#allocation-summary').textContent=`${rows.filter(p=>p.symbol!=="CASH").length}종목 · ${$('#allocation-cash').checked?'예수금 포함':'예수금 제외'} · 평가금액 합계 ${krw(allocationTotal)}`;
+    $('#portfolio-chart').innerHTML=rows.length&&decimal(allocationTotal)>0n?portfolioChart(rows,allocationTotal,layout):emptyState('표시할 자산 비중이 없습니다.','보유 종목과 평가금액을 확인하거나 예수금 포함을 선택하세요.');
+    $$("[data-layout]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.layout===layout)));
+  };
+  $('#allocation-cash').onchange=drawAllocation;
   $("#portfolio-sort").value=preference("portfolio-sort","desc");
   $("#portfolio-sort-metric").value=preference("portfolio-sort-metric","value");
   const drawPortfolio=()=>{
     const direction=$("#portfolio-sort").value;
     const rows=sortPortfolio(enrichedPortfolio(portfolio,holdings,aa),$("#portfolio-sort-metric").value,direction);
-    $("#portfolio-chart").innerHTML=portfolioChart(rows,total,layout);
     const sort={metric:$("#portfolio-sort-metric").value,direction};
     const query=$("#portfolio-search").value.trim().toLocaleLowerCase();
     const visible=rows.filter(h=>!query||[h.name,h.symbol].some(v=>String(v||"").toLocaleLowerCase().includes(query)));
@@ -130,11 +138,12 @@ async function securities() {
     });
     $$("[data-layout]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.layout===layout)));
   };
-  $$("[data-layout]").forEach(b=>b.onclick=()=>{layout=b.dataset.layout;localStorage.setItem("portfolio-layout",JSON.stringify(layout));drawPortfolio();});
+  $$("[data-layout]").forEach(b=>b.onclick=()=>{layout=b.dataset.layout;localStorage.setItem("portfolio-layout",JSON.stringify(layout));drawAllocation();});
   $("#portfolio-sort").onchange=()=>{localStorage.setItem("portfolio-sort",JSON.stringify($("#portfolio-sort").value));drawPortfolio();};
   $("#portfolio-sort-metric").onchange=()=>{localStorage.setItem("portfolio-sort-metric",JSON.stringify($("#portfolio-sort-metric").value));drawPortfolio();};
   $("#portfolio-search").oninput=drawPortfolio;
   drawPortfolio();
+  drawAllocation();
   $("#trend-metric").value="SECURITIES";
   $("#trend-metric").closest("select").hidden=true;
   // Optional history/order failures must not discard already-rendered account holdings.

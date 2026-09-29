@@ -84,9 +84,22 @@ const output=path.join(root,'build','ui-review');
   assert.equal(await page.locator('.mobile-nav').isVisible(),true);
   assert.equal(await page.locator('.mobile-nav [aria-current="page"]').innerText(),'증권');
   await page.locator('#security-section-tabs [role="tab"]').first().focus();await page.keyboard.press('ArrowRight');
-  assert.equal(await page.locator('#security-orders').isVisible(),true);
+  assert.equal(await page.locator('#security-allocation').isVisible(),true);
   assert.equal(await page.locator('#security-portfolio').isVisible(),false);
-  await page.reload();await ready();assert.equal(await page.locator('#security-orders').isVisible(),true);
+  await page.reload();await ready();assert.equal(await page.locator('#security-allocation').isVisible(),true);
+  assert.match(await page.locator('#allocation-summary').innerText(),/예수금 제외/);
+  const holdingBars=await page.locator('#portfolio-chart .bar-row').count();
+  await page.locator('#allocation-cash').check();
+  assert.equal(await page.locator('#portfolio-chart .bar-row').count(),holdingBars+1);
+  assert.match(await page.locator('#allocation-summary').innerText(),/예수금 포함/);
+  await page.locator('[data-layout="pie"]').click();
+  assert.equal(await page.locator('#portfolio-chart svg').count(),1);
+  for(const width of [390,320]) {
+    await page.setViewportSize({width,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+    await page.screenshot({path:path.join(output,`allocation-${width}.png`),fullPage:true});
+  }
+  await page.locator('[data-layout="bar"]').click();
   await page.locator('#security-section-tabs a[href="#security-portfolio"]').click();
   // Desktop keeps a full table with keyboard scrolling.
   await page.setViewportSize({width:1000,height:844});
