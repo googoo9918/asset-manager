@@ -62,9 +62,13 @@ function kbCollectionSummary(result){
 }
 function openKbImport() {
   modal('KB국민카드 가져오기', `
-    <p>평소 사용하는 Chrome에서 KB에 로그인해주세요. 선택한 조회 기간의 전체 페이지와 매출전표를 자동으로 수집합니다.</p>
-    <p>① 이용내역 수집 → ② 앱 카드 연결·중복 확인 → ③ 거래내역 등록. 등록한 거래는 연결된 카드의 사용내역과 사용액에도 반영됩니다.</p>
-    <div class="toolbar"><button type="button" id="kb-collect" class="primary">이용내역·매출전표 가져오기</button><button type="button" id="kb-existing">KB 로그인 화면 열기</button><button type="button" id="kb-latest">최근 수집 결과</button></div>
+    <ol class="order-progress kb-import-steps" aria-label="카드 내역 가져오기 단계"><li id="kb-step-collect" aria-current="step">1. 수집</li><li id="kb-step-map">2. 중복 확인</li><li id="kb-step-save">3. 거래 등록</li></ol>
+    <div class="kb-collection-setup"><h3>새로운 내역만 빠르게</h3><details id="kb-collection-options" open><summary>수집 방식·조회 범위</summary><p>Chrome의 KB 이용내역 화면에서 기간을 선택해주세요. 저장한 전표는 재사용합니다.</p>
+    <label>전표 수집 방식<select id="kb-receipt-mode"><option value="incremental">새로 필요한 전표만 (기본)</option><option value="none">이용내역만 · 전표 조회 생략</option><option value="all">선택 기간의 전표 모두 다시 조회</option></select></label>
+    <p id="kb-mode-help" class="muted">취소·매입 상태 변경 확인을 위해 이용내역 목록은 전체 확인합니다. 저장한 전표 팝업은 다시 열지 않습니다.</p></details>
+    <div class="toolbar"><button type="button" id="kb-collect" class="primary">필요한 전표 가져오기</button><button type="button" id="kb-existing">KB 로그인 화면 열기</button></div></div>
+    <div class="kb-collection-status"><p id="kb-message" role="status" tabindex="-1"></p><progress id="kb-progress" hidden aria-label="이용내역 확인 진행률"></progress><div id="kb-collection-counts" class="kb-collection-counts"></div></div>
+    <div class="toolbar"><button type="button" id="kb-latest">저장된 수집 결과 불러오기</button><span class="muted">수집만으로 거래가 등록되지는 않습니다.</span></div>
     <p id="kb-connection" role="status">Chrome 연결 확인 중…</p>
     <details id="kb-setup"><summary>최초 연결 설정</summary>
       <p>확장 프로그램에 아래 연결코드를 한 번만 등록해주세요. 이후 앱을 다시 실행해도 자동으로 연결합니다.</p>
@@ -77,13 +81,21 @@ function openKbImport() {
     <details><summary>별도 로그인 창 사용 (기존 Chrome의 인증은 공유되지 않음)</summary>
       <div class="toolbar"><button type="button" id="kb-open">별도 로그인 창 열기</button><button type="button" id="kb-capture">조회 결과 읽기</button><button type="button" id="kb-close">별도 로그인 창 종료</button></div>
     </details>
-    <p id="kb-message" role="status"></p><div id="kb-evidence"></div><div id="kb-mapping"></div><div id="kb-preview"></div>`, null);
+    <div id="kb-evidence"></div><div id="kb-mapping"></div><div id="kb-preview"></div>`, null);
   let tables=[], preview=null, busy=false, savedMappings=[], receiptRows=[];
+  const step=name=>['collect','map','save'].forEach(s=>{const el=$('#kb-step-'+s);if(s===name)el.setAttribute('aria-current','step');else el.removeAttribute('aria-current');});
+  const modeHelp={incremental:'취소·매입 상태 변경 확인을 위해 이용내역 목록은 전체 확인합니다. 저장한 전표 팝업은 다시 열지 않습니다.',none:'전표 팝업을 열지 않고 이용내역만 가져옵니다. 전표 업종에 따른 자동 분류는 제공되지 않습니다.',all:'저장된 전표가 있어도 선택 기간의 모든 전표를 다시 엽니다. 전표 내용을 재확인할 때만 사용하세요.'};
+  $('#kb-receipt-mode').onchange=()=>{
+    const mode=$('#kb-receipt-mode').value;$('#kb-mode-help').textContent=modeHelp[mode];
+    $('#kb-collect').textContent=mode==='none'?'이용내역만 가져오기':mode==='all'?'전체 전표 다시 가져오기':'필요한 전표 가져오기';
+  };
+  const counts=stats=>{$('#kb-collection-counts').innerHTML=[['새로 조회',stats.fetched],['저장 전표 재사용',stats.reused],['전표 확인 필요',stats.failed]].map(([label,n])=>`<div><span>${label}</span><strong>${fmt(n||0)}<small>건</small></strong></div>`).join('');};
   const act = fn => async () => {
     if(busy) return;
     busy=true; $('#kb-message').textContent='처리 중입니다…';
     if($('#kb-save-message'))$('#kb-save-message').textContent='';
-    const buttons=$$('#modal-body button'); buttons.forEach(b=>b.disabled=true);
+    const buttons=$$('#modal-body button').map(b=>[b,b.disabled]);buttons.forEach(([b])=>b.disabled=true);
+    $('#kb-receipt-mode').disabled=true;
     try { await fn(); } catch(e) {
       if($('#kb-connection')===connectionNode){
         $('#kb-message').textContent=e.message;
@@ -94,7 +106,8 @@ function openKbImport() {
       }
     }
     finally {
-      busy=false; buttons.forEach(b=>b.disabled=false);
+      busy=false; buttons.forEach(([b,disabled])=>b.disabled=disabled);
+      if($('#kb-connection')===connectionNode){$('#kb-receipt-mode').disabled=false;$('#kb-progress').hidden=true;}
       if($('#kb-connection')===connectionNode && $('#kb-message').textContent==='처리 중입니다…')
         $('#kb-message').textContent='처리가 완료되었습니다.';
     }
@@ -117,14 +130,22 @@ function openKbImport() {
   // The saved collection survives closing this dialog and restarting the app.
   act(async()=>{
     try{
+      const job=await api('/kb-card/collection');
+      if($('#kb-connection')!==connectionNode)return;
+      if(job.state==='running'){await followCollection();return;}
       const result=await api('/kb-card/latest');
       if($('#kb-connection')===connectionNode)await showCollection(result);
     }catch(e){
-      if($('#kb-connection')===connectionNode)$('#kb-message').textContent='최근 수집 결과를 불러오지 못했습니다. 저장된 결과가 있다면 ‘최근 수집 결과’를 눌러 다시 시도해주세요.';
+      if($('#kb-connection')===connectionNode)$('#kb-message').textContent=e.message==='저장된 수집 결과가 없습니다.'?'KB에서 조회 기간을 선택하고 필요한 전표 가져오기를 눌러주세요.':'최근 수집 결과를 불러오지 못했습니다. 저장된 수집 결과 불러오기로 다시 시도해주세요.';
     }
   })();
   $('#kb-collect').onclick=act(async()=>{
-    await api('/kb-card/collect','POST',{});
+    step('collect');counts({});
+    await api('/kb-card/collect','POST',{receiptMode:$('#kb-receipt-mode').value});
+    await followCollection();
+  });
+  async function followCollection(){
+    $('#kb-progress').hidden=false;
     for(;;){
       await new Promise(resolve=>setTimeout(resolve,1000));
       if($('#kb-connection')!==connectionNode)return;
@@ -135,14 +156,41 @@ function openKbImport() {
         break;
       }
       if(job.state==='idle')throw new Error('수집 도구가 다시 시작되었습니다. 최근 수집 결과를 확인하거나 다시 가져와주세요.');
-      $('#kb-message').textContent=job.progress?.phase==='connecting'?'등록된 Chrome에 자동 연결 중입니다…':`수집 중 · ${job.progress?.page||1}페이지, 이용내역 ${job.progress?.collected||0}/${job.progress?.expected||'?'}건, 전표 ${job.progress?.receipts||0}건`;
+      const p=job.progress||{};counts(p);
+      if(p.expected){$('#kb-progress').max=p.expected;$('#kb-progress').value=p.collected||0;}else $('#kb-progress').removeAttribute('value');
+      $('#kb-message').textContent=p.phase==='connecting'?'등록된 Chrome에 자동 연결 중입니다…':`이용내역 ${p.collected||0}/${p.expected??'?'}건 확인 · ${p.page||1}페이지 · 저장된 전표는 건너뛰고 있습니다.`;
     }
-  });
+  }
   async function showCollection(result){
+    if($('#kb-connection')!==connectionNode)return;
+    if(!result?.tables?.some(t=>t.rows.length>1)){
+      $('#kb-message').textContent='선택한 기간에 이용내역이 없습니다. KB에서 조회 기간을 변경해주세요.';
+      $('#kb-evidence').innerHTML='';$('#kb-mapping').innerHTML='';$('#kb-preview').innerHTML='';counts({});preview=null;return;
+    }
     await loaded({source:'collection',tables:result.tables,receipts:result.receipts});
-    $('#kb-message').textContent=`${result.range} · 이용내역 ${result.expected}건, 전표 ${result.receipts.length}건을 수집했습니다. 아직 거래내역에는 등록되지 않았습니다. 아래에서 앱에 연결할 카드를 선택하고 중복 확인 후 등록해주세요.`;
-    $('#kb-evidence').innerHTML=kbCollectionSummary(result)+`${result.warnings.length?'<p>일부 전표를 확인하지 못했습니다. 아래 원본에서 확인해주세요.</p>':''}
-      <details><summary>수집된 매출전표 ${result.receipts.length}건 보기</summary>${result.receipts.map(r=>`<details><summary>${esc(r.fields.date)} · ${esc(r.fields.merchant)} · ${esc(r.fields.total)}</summary>${table(['항목','내용'],Object.entries(r.fields).map(([k,v])=>[esc(({cardName:'카드명',cardNumber:'카드번호',date:'거래일자',approvalNumber:'승인번호',transactionType:'거래유형',approvalStatus:'승인상태',paymentMethod:'결제방법',installments:'할부',merchant:'가맹점명',industry:'업종',businessNumber:'사업자번호',amount:'금액',tax:'부가세',serviceCharge:'봉사료',total:'합계',pointsUsed:'포인트리 사용금액'})[k]||k),esc(v)]))}</details>`).join('')}</details>`;
+    if($('#kb-connection')!==connectionNode)return;
+    const receipts=result.receipts||[],warnings=result.warnings||[];
+    $('#kb-collection-options').open=false;
+    counts(result.stats||{fetched:receipts.length,failed:warnings.length});step('map');
+    $('#kb-message').textContent=`${result.range} · 이용내역 ${result.expected}건 확인. ${result.receiptMode==='none'?'전표 조회는 생략했습니다. ':''}카드를 연결하고 중복 확인을 진행해주세요. 거래 등록은 마지막 단계에서 선택합니다.`;
+    $('#kb-evidence').innerHTML=`<details><summary>카드별 수집 요약</summary>${kbCollectionSummary(result)}</details>${warnings.length?`<p class="filter-message">전표 ${warnings.length}건을 확인하지 못했습니다. 다시 가져오면 저장된 전표는 건너뛰고 실패한 전표를 재시도합니다.</p>`:''}
+      <details id="kb-receipt-view"><summary>수집된 매출전표 ${receipts.length}건 보기</summary><label>전표 검색<input type="search" id="kb-receipt-search" placeholder="가맹점·거래일·승인번호"></label><div id="kb-receipt-list"></div><div class="toolbar pagination"><button type="button" id="kb-receipt-prev">이전</button><span id="kb-receipt-page" role="status"></span><button type="button" id="kb-receipt-next">다음</button></div></details>`;
+    let receiptPage=0;
+    const drawReceipts=()=>{
+      const query=$('#kb-receipt-search').value.trim().toLocaleLowerCase();
+      const filtered=receipts.filter(r=>[r.fields.merchant,r.fields.date,r.fields.approvalNumber].some(v=>String(v||'').toLocaleLowerCase().includes(query)));
+      const pages=Math.max(1,Math.ceil(filtered.length/15));receiptPage=Math.max(0,Math.min(receiptPage,pages-1));
+      $('#kb-receipt-list').innerHTML=filtered.slice(receiptPage*15,receiptPage*15+15).map((r,i)=>`<details data-kb-receipt="${i}"><summary>${esc(r.fields.date)} · ${esc(r.fields.merchant)} · ${esc(r.fields.total)} ${r.reused?' · 저장 전표':''}</summary><div></div></details>`).join('')||'<p class="empty">표시할 전표가 없습니다.</p>';
+      $$('[data-kb-receipt]').forEach(el=>el.ontoggle=()=>{
+        if(!el.open||el.dataset.rendered)return;el.dataset.rendered='true';
+        const r=filtered[receiptPage*15+Number(el.dataset.kbReceipt)];
+        $('div',el).innerHTML=detailGrid(Object.fromEntries(Object.entries(r.fields).map(([k,v])=>[({cardName:'카드명',cardNumber:'카드번호',date:'거래일자',approvalNumber:'승인번호',transactionType:'거래유형',approvalStatus:'승인상태',paymentMethod:'결제방법',installments:'할부',merchant:'가맹점명',industry:'업종',businessNumber:'사업자번호',amount:'금액',tax:'부가세',serviceCharge:'봉사료',total:'합계',pointsUsed:'포인트리 사용금액'})[k]||k,v])));
+      });
+      $('#kb-receipt-page').textContent=`${receiptPage+1} / ${pages} 페이지 · ${filtered.length}건`;
+      $('#kb-receipt-prev').disabled=receiptPage===0;$('#kb-receipt-next').disabled=receiptPage===pages-1;
+    };
+    $('#kb-receipt-search').oninput=()=>{receiptPage=0;drawReceipts();};
+    $('#kb-receipt-prev').onclick=()=>{receiptPage--;drawReceipts();};$('#kb-receipt-next').onclick=()=>{receiptPage++;drawReceipts();};drawReceipts();
   }
   $('#kb-open').onclick=act(async()=>{ await api('/kb-card/automation-browser','POST',{}); $('#kb-message').textContent='별도 브라우저에서 직접 로그인하고 이용내역을 조회해주세요. PIN은 앱에 저장하지 않습니다.'; });
   $('#kb-close').onclick=act(async()=>{ await api('/kb-card/browser','DELETE'); $('#kb-message').textContent='로그인 브라우저를 종료했습니다.'; });
@@ -227,6 +275,7 @@ function openKbImport() {
     });
   }
   function drawPreview(cardId,errors) {
+    step('save');
     const card=state.cards.find(c=>eq(c.id,cardId));
     const pointDebit=preview.rows.some(x=>x.status==='READY'&&x.row.pointPayment);
     const categoryOptions=id=>{
@@ -240,10 +289,11 @@ function openKbImport() {
       <p>등록 가능한 내역 ${preview.rows.filter(x=>x.status==='READY').length}건. 중복·취소·확인이 필요한 내역은 등록에서 제외됩니다.</p>
       ${errors.length?`<details><summary>읽지 못한 행 ${errors.length}건 (저장 제외)</summary><p>${errors.map(esc).join('<br>')}</p></details>`:''}
       <label><input type="checkbox" id="kb-select-all">등록 가능한 내역 전체 선택</label>
-      ${table(['선택','이용일','가맹점 / 업종','원화 금액','결제','분류 / 근거','확인 결과'],preview.rows.map(x=>[
+      <div id="kb-preview-rows">${table(['선택','이용일','가맹점 / 업종','원화 금액','결제','분류 / 근거','확인 결과'],preview.rows.map(x=>[
         x.status==='READY'?`<input type="checkbox" data-kb-row="${x.index}" aria-label="${esc(x.row.merchant)} 저장">`:'—',
         esc(x.row.date),esc(x.row.merchant)+`<div class="muted">${esc(x.row.industry||'전표 업종 없음')}</div>`,krw(x.row.amount),x.row.pointPayment?'포인트리':x.row.installmentMonths===1?'일시불':x.row.installmentMonths+'개월',
-        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',esc(x.reason)]))}
+        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',esc(x.reason)]))}</div>
+      <div class="toolbar pagination"><button type="button" id="kb-preview-prev">이전</button><span id="kb-preview-page" role="status"></span><button type="button" id="kb-preview-next">다음</button></div>
       <label>등록 가능한 내역의 분류 일괄 변경 <select id="kb-category">${categoryOptions(null)}</select></label>
       <details><summary>카테고리 추가</summary><label>추가할 위치 <select id="kb-new-parent"><option value="">새 대분류</option>${state.categories.filter(c=>c.active&&c.transactionType==='EXPENSE'&&!c.parentId).map(c=>`<option value="${c.id}">${esc(c.name)} 아래 중분류</option>`).join('')}</select></label><label>이름 <input id="kb-new-name" maxlength="80"></label><button type="button" id="kb-add-category">카테고리 추가</button></details>
       ${card.cardType==='DEBIT'?'<label>체크카드 연결계좌 잔액 <select id="kb-balance"><option value="">반영 방법 선택</option><option value="false">현재 잔액에 이미 반영됨 — 사용내역만 저장</option><option value="true">아직 반영되지 않음 — 사용액만큼 차감</option></select></label>':'<p class="muted">신용카드는 전체 구매액을 지출로 기록하며, 카드대금 출금은 기존 결제 처리에서 관리합니다.</p>'}
@@ -251,6 +301,14 @@ function openKbImport() {
       <label><input type="checkbox" id="kb-confirm-card">카드·금액·분류와 잔액 반영 방법을 확인했습니다. (필수)</label>
       <p id="kb-save-message" class="error" role="alert" tabindex="-1"></p>
       <button type="button" id="kb-save" class="primary">분류 확인 후 최종 등록</button>`;
+    let previewPage=0;
+    const drawPreviewPage=()=>{
+      const rows=$$('#kb-preview-rows tbody tr'),pages=Math.max(1,Math.ceil(preview.rows.length/15));
+      rows.forEach((row,i)=>row.hidden=i<previewPage*15||i>=(previewPage+1)*15);
+      $('#kb-preview-page').textContent=`${previewPage+1} / ${pages} 페이지 · ${preview.rows.length}건 · 선택·분류는 페이지 이동 후에도 유지됩니다.`;
+      $('#kb-preview-prev').disabled=previewPage===0;$('#kb-preview-next').disabled=previewPage===pages-1;
+    };
+    $('#kb-preview-prev').onclick=()=>{previewPage--;drawPreviewPage();};$('#kb-preview-next').onclick=()=>{previewPage++;drawPreviewPage();};drawPreviewPage();
     $('#kb-category').onchange=()=>{
       if($('#kb-category').value)$$('[data-kb-category]').forEach(el=>el.value=$('#kb-category').value);
     };

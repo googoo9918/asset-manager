@@ -12,6 +12,22 @@
   --focus: #80600b;
   line-height: 1.55;
 }
+.kb-collection-setup { padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: #fbf8ee; }
+.kb-collection-setup h3 { margin: 0 0 8px; }
+.kb-import-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 4px; }
+.kb-import-steps li { padding: 8px 4px; text-align: center; font-size: .76rem; }
+.kb-collection-setup label { display: grid; gap: 6px; max-width: 480px; font-size: .86rem; }
+.kb-collection-setup p { font-size: .86rem; line-height: 1.7; }
+.kb-collection-setup .toolbar { margin-bottom: 0; }
+.kb-collection-status { margin: 18px 0; }
+.kb-collection-status progress { width: 100%; height: 8px; accent-color: #b58b1c; }
+.kb-collection-counts { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.kb-collection-counts > div { padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.kb-collection-counts span { display: block; font-size: .74rem; color: var(--muted); }
+.kb-collection-counts strong { display: block; font-size: 1.25rem; margin-top: 6px; }
+.kb-collection-counts small { font-weight: 400; font-size: .75rem; margin-left: 4px; }
+#kb-receipt-list > details { border-bottom: 1px solid var(--line); }
+#kb-receipt-list summary { overflow-wrap: anywhere; }
 * {
   box-sizing: border-box;
 }

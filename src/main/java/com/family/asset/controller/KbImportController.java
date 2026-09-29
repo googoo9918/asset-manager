@@ -35,7 +35,12 @@ public class KbImportController {
   }
   @PostMapping("/browser") public Object open() { return browser.openExistingChrome(); }
   @PostMapping("/connect") public Object connect() { return browser.call(Map.of("action", "connect")); }
-  @PostMapping("/collect") public Object collect() { return browser.call(Map.of("action", "collect")); }
+  public record CollectionRequest(String receiptMode) {}
+  @PostMapping("/collect") public Object collect(@RequestBody(required=false) CollectionRequest request) {
+    String mode=request==null||request.receiptMode()==null?"incremental":request.receiptMode();
+    check(java.util.Set.of("incremental","all","none").contains(mode),"전표 수집 방식을 확인해주세요.");
+    return browser.call(Map.of("action", "collect","receiptMode",mode));
+  }
   @GetMapping("/collection") public Object collection() { return browser.call(Map.of("action", "collection")); }
   @GetMapping("/latest") public Object latest() { return browser.latestCollection(); }
   @PostMapping("/benefits/capture") public Object captureBenefits() { return browser.call(Map.of("action", "benefits")); }

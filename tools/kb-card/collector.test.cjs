@@ -29,3 +29,46 @@ test('receipt field layout preserves supply, tax and approval as distinct values
   const fields=receiptFields({rows:[['거래일자','금액','9091원'],['2026-09-15'],['승인번호','부가세','909원'],['00001234'],['승인상태','합계','10000원'],['정상매입']]});
   assert.equal(fields.date,'2026-09-15');assert.equal(fields.approvalNumber,'00001234');assert.equal(fields.amount,'9091원');assert.equal(fields.tax,'909원');assert.equal(fields.total,'10000원');
 });
+
+async function temporaryOptions(){
+  await fs.mkdir(path.resolve('build'),{recursive:true});
+  return {wait:async()=>{},archiveDirectory:await fs.mkdtemp(path.resolve('build/kb-incremental-'))};
+}
+function manyFake(data,{missing=new Set(),failPage=0}={}){
+  let page=1,receipt=null;const opened=[];
+  return {opened,async command(action,args={}){
+    if(action==='read'){
+      const source={tabId:1,frameId:0,tables:[{name:'카드이용내역',rows:[['조회기간','test-range'],['정상/취소(건)','국내',data.length+'/0']]},{name:'전체카드 상세이용내역',rows:[headers,...data.slice((page-1)*15,page*15)]}],controls:Array.from({length:Math.ceil(data.length/15)},(_,i)=>({tag:'A',text:String(i+1)}))};
+      return args.tabId?[source]:[source,...(receipt?[{tabId:2,frameId:0,tables:[{name:'매출전표',rows:[['승인번호'],[receipt],['가맹점명'],['상점']]}]}]:[])];
+    }
+    if(action==='click'){if(Number(args.text)===failPage)throw Error('connection lost');page=Number(args.text);return [];}
+    if(action==='receipt'){opened.push(args.approval);if(missing.has(args.approval))return [{available:false}];receipt=args.approval;return [{available:true}];}
+    if(action==='close-popup'){receipt=null;return [];}
+    throw Error(action);
+  }};
+}
+const sampleRows=n=>Array.from({length:n},(_,i)=>rows[0].map((v,j)=>j===11?String(i+1).padStart(8,'0'):v));
+test('300 saved receipts require zero popup visits; one changed row requires one, and force/none modes are explicit',async()=>{
+  const opts=await temporaryOptions(),data=sampleRows(300),first=manyFake(data);
+  const initial=await collect(first,()=>{},opts);assert.equal(first.opened.length,300);assert.equal(initial.stats.fetched,300);
+  const second=manyFake(data),again=await collect(second,()=>{},opts);
+  assert.equal(second.opened.length,0);assert.equal(again.stats.reused,300);assert.equal(again.complete,true);assert.equal(again.receiptsComplete,true);
+  data[127][9]='취소';const changed=manyFake(data),updated=await collect(changed,()=>{},opts);
+  assert.deepEqual(changed.opened,[data[127][11]]);assert.equal(updated.stats.reused,299);
+  const none=manyFake(data);assert.equal((await collect(none,()=>{},{...opts,receiptMode:'none'})).receipts.length,0);assert.equal(none.opened.length,0);
+  const forced=manyFake(data.slice(0,2));await collect(forced,()=>{},{...opts,receiptMode:'all'});assert.equal(forced.opened.length,2);
+});
+test('failed receipts retry and interrupted collection reuses successes without a completed archive',async()=>{
+  const opts=await temporaryOptions(),data=sampleRows(17);
+  const interrupted=manyFake(data,{missing:new Set([data[2][11]]),failPage:2});
+  await assert.rejects(collect(interrupted,()=>{},opts),/connection lost/);
+  const retry=manyFake(data),result=await collect(retry,()=>{},opts);
+  assert.equal(result.stats.reused,14);assert.equal(result.stats.fetched,3);assert.equal(result.stats.failed,0);
+  assert.deepEqual(retry.opened,[data[2][11],data[15][11],data[16][11]]);
+});
+test('existing archives seed reuse and same approval with different amount is not reused',async()=>{
+  const opts=await temporaryOptions(),data=sampleRows(1),row=data[0];
+  await fs.writeFile(path.join(opts.archiveDirectory,'kb-legacy.json'),JSON.stringify({format:'asset-manager-kb-collection',complete:true,tables:[{rows:[headers,row]}],receipts:[{sourceKey:[row[1],row[2],row[11],row[9]].join('|'),approvalNumber:row[11],fields:{approvalNumber:row[11],industry:'한식'}}]}));
+  const same=manyFake(data),result=await collect(same,()=>{},opts);assert.equal(same.opened.length,0);assert.equal(result.receipts[0].fields.industry,'한식');
+  data[0][4]='9999원';const changed=manyFake(data);await collect(changed,()=>{},opts);assert.equal(changed.opened.length,1);
+});

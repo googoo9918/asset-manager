@@ -98,6 +98,7 @@ function createBridge(launch = () => chromium.launch({ headless: false, channel:
         return benefitsJob;
       }
       case 'collect': {
+        if(request.receiptMode&&!['incremental','all','none'].includes(request.receiptMode))throw new Error('전표 수집 방식을 확인해주세요.');
         if(collecting||benefitsBusy)throw new Error('이미 수집 중입니다. 완료될 때까지 기다려주세요.');
         await relay.start();
         collecting=true;collection={state:'running',progress:{collected:0,receipts:0}};
@@ -107,7 +108,7 @@ function createBridge(launch = () => chromium.launch({ headless: false, channel:
             await new Promise(resolve=>setTimeout(resolve,1000));
           }
           if(!relay.connected)throw new Error('Chrome 자동 연결을 확인하지 못했습니다. KB 탭을 열고 확장 프로그램의 연결 상태를 확인해주세요. 최초 등록 후에는 코드를 다시 입력할 필요가 없습니다.');
-          return collect(relay,progress=>collection={state:'running',progress},{withReceipts:request.withReceipts!==false});
+          return collect(relay,progress=>collection={state:'running',progress},{withReceipts:request.withReceipts!==false,receiptMode:request.receiptMode||'incremental'});
         })()
           .then(result=>collection={state:'done',result}).catch(e=>collection={state:'failed',message:e.message}).finally(()=>collecting=false);
         return collection;

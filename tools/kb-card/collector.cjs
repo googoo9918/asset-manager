@@ -1,6 +1,7 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const {receiptCache,fingerprint:receiptFingerprint}=require('./receipt-cache.cjs');
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const clean=s=>String(s??'').replace(/\s/g,'');
 function usage(page){return page.tables?.find(t=>t.name.includes('상세이용내역')&&t.rows[0]?.some(c=>clean(c)==='승인번호'));}
@@ -14,7 +15,11 @@ function receiptFields(table){
     merchant:after('가맹점명'),industry:after('업종'),businessNumber:after('사업자번호'),
     amount:beside('금액'),tax:beside('부가세'),serviceCharge:beside('봉사료'),total:beside('합계'),pointsUsed:beside('포인트리\n사용금액')};
 }
-async function collect(relay,progress,{withReceipts=true,wait=sleep,archiveDirectory=path.resolve('data/kb-card')}={}){
+async function collect(relay,progress,{withReceipts=true,receiptMode='incremental',wait=sleep,archiveDirectory=path.resolve('data/kb-card')}={}){
+  if(!['incremental','all','none'].includes(receiptMode))throw new Error('전표 수집 방식을 확인해주세요.');
+  if(!withReceipts)receiptMode='none';
+  withReceipts=receiptMode!=='none';
+  const cache=withReceipts?await receiptCache(archiveDirectory):null;
   let pages=await relay.command('read');
   let source=pages.find(usage);
   if(!source){
@@ -33,7 +38,8 @@ async function collect(relay,progress,{withReceipts=true,wait=sleep,archiveDirec
   if(expected===null)throw new Error('조회 총 건수를 확인할 수 없어 전체 수집을 중단했습니다.');
   if(expected>500)throw new Error('한 번에 500건까지 수집합니다. 조회 기간을 줄여주세요.');
   const result={format:'asset-manager-kb-collection',version:1,collectedAt:new Date().toISOString(),range,expected,summary,
-    tables:[],receipts:[],warnings:[],complete:false};
+    tables:[],receipts:[],warnings:[],complete:false,receiptMode,stats:{fetched:0,reused:0,failed:0}};
+  const report=page=>progress({phase:'collecting',page,collected:allRows.length,expected,receipts:result.receipts.length,...result.stats});
   const table=usage(source),headers=table.rows[0],normalized=headers.map(clean),allRows=[],seen=new Set();
   const fingerprint=p=>JSON.stringify(usage(p)?.rows.slice(1));
   async function waitChanged(before){
@@ -61,11 +67,15 @@ async function collect(relay,progress,{withReceipts=true,wait=sleep,archiveDirec
       if(!approval)continue;
       const identity=key(row,normalized);if(seen.has(identity))continue;
       seen.add(identity);allRows.push(row);added++;
-      progress({page:pageNo,collected:allRows.length,expected,receipts:result.receipts.length});
+      report(pageNo);
       if(withReceipts){
+        const cacheId=receiptFingerprint(row,headers),saved=receiptMode==='incremental'?await cache.get(cacheId):null;
+        if(saved&&saved.sourceKey===identity&&saved.approvalNumber===approval&&saved.fields.approvalNumber===approval){
+          result.receipts.push({...saved,reused:true});result.stats.reused++;report(pageNo);continue;
+        }
         const beforeTabs=new Set((await relay.command('read')).map(p=>p.tabId));
         const opened=await relay.command('receipt',{tabId,frameId,rowIndex,approval});
-        if(!opened.some(r=>r.available)){result.warnings.push({approval,message:'매출전표 링크 없음'});continue;}
+        if(!opened.some(r=>r.available)){result.warnings.push({approval,message:'매출전표 링크 없음'});result.stats.failed++;report(pageNo);continue;}
         let receipt;
         for(let tries=0;tries<20&&!receipt;tries++){
           await wait(250);
@@ -76,9 +86,12 @@ async function collect(relay,progress,{withReceipts=true,wait=sleep,archiveDirec
           }
         }
         if(receipt){
-          result.receipts.push({sourceKey:identity,approvalNumber:approval,fields:receiptFields(receipt.table),table:receipt.table});
+          const entry={sourceKey:identity,approvalNumber:approval,fields:receiptFields(receipt.table),table:receipt.table,collectedAt:new Date().toISOString()};
+          result.receipts.push(entry);result.stats.fetched++;
+          await cache.put(cacheId,entry);
           if(receipt.tabId!==tabId&&!beforeTabs.has(receipt.tabId))await relay.command('close-popup',{tabId:receipt.tabId});
-        }else result.warnings.push({approval,message:'매출전표 응답을 확인하지 못함'});
+        }else {result.warnings.push({approval,message:'매출전표 응답을 확인하지 못함'});result.stats.failed++;}
+        report(pageNo);
       }
     }
     if(allRows.length===expected){result.complete=true;break;}
