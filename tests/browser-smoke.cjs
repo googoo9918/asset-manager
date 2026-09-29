@@ -116,8 +116,10 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('[data-owner=WIFE]').click();await page.waitForSelector('#content[aria-busy="false"]');
   assert.equal(await page.locator('[data-owner=WIFE]').getAttribute('aria-pressed'),'true');
   await page.locator('[data-owner=JOINT]').click();await page.waitForSelector('#content[aria-busy="false"]');
+  await page.locator('#portfolio-distribution summary').click();
   await page.locator('[data-layout=pie]').click();assert.equal(await page.locator('#portfolio-chart svg').count(),1);
   await page.locator('#portfolio-chart [data-chart-tip]').first().evaluate(el=>el.focus({preventScroll:true}));await page.waitForSelector('#chart-tooltip',{state:'visible'});
+  await page.locator('#security-section-tabs a[href="#security-accounts"]').click();
   await page.locator('#reorder').click();await page.waitForSelector('#order-list li');
   const original=await page.locator('#order-list li').first().getAttribute('data-order-id');
   await page.locator('#order-list .drag-handle').first().focus();await page.keyboard.press('ArrowDown');
@@ -132,6 +134,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.locator('#question-cancel').click();
   sortingFixture=true;
   await page.reload();await page.waitForSelector('#content[aria-busy="false"]');
+  await page.locator('#security-section-tabs a[href="#security-portfolio"]').click();
   const symbols=container=>page.locator(container+' tbody tr td:first-child').allTextContents().then(cells=>cells.map(c=>c.split(' / ')[1]));
   for(const [metric,desc,asc] of [
     ['value',['CASH','SORT_B','SORT_A','SORT_C'],['SORT_C','SORT_A','SORT_B','CASH']],
@@ -150,6 +153,7 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.reload();await page.waitForSelector('#content[aria-busy="false"]');
   assert.equal(await page.locator('#portfolio-sort-metric').inputValue(),'return');
   assert.deepEqual(await symbols('#portfolio-table'),['SORT_A','SORT_B','SORT_C','CASH']);
+  await page.locator('#security-section-tabs a[href="#security-accounts"]').click();
   await page.locator('[data-action=security-detail]').first().click();
   await page.waitForSelector('#security-tab-body [data-holding-sort]');
   assert.deepEqual(await symbols('#security-tab-body'),['SORT_B','SORT_A','SORT_C']);
@@ -373,9 +377,11 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
   await page.goto('http://asset.test/securities');await page.waitForSelector('#content[aria-busy="false"]');
   assert.match(await page.locator('#portfolio-table').innerText(),/\+2.50%/);
   assert.equal(await page.locator('#daily-price-history tbody tr').count(),15);
+  await page.locator('#security-section-tabs a[href="#security-history"]').click();
   await page.locator('#daily-price-next').click();assert.equal(await page.locator('#daily-price-history tbody tr').count(),1);
   await page.locator('#daily-price-symbol').fill('TEST');assert.equal(await page.locator('#daily-price-history tbody tr').count(),1);
   assert.match(await page.locator('#daily-price-history').innerText(),/과거 증권계좌/);
+  await page.locator('#security-section-tabs a[href="#security-portfolio"]').click();
   await page.locator('#portfolio-table [data-action=daily-price-history]').click();await page.waitForSelector('#modal[open]');
   assert.match(await page.locator('#modal-body').innerText(),/\+2.50%/);await page.locator('#close-modal').click();
   await page.locator('[data-owner=WIFE]').click();await page.waitForSelector('#content[aria-busy="false"]');

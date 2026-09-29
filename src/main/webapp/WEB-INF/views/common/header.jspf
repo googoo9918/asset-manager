@@ -3,8 +3,9 @@
 <!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><c:out
         value="${pageTitle}"/> · 윱니와 동구</title><link rel="stylesheet" href="<c:url value='/app.css'/>"></head>
 <body data-context="${pageContext.request.contextPath}">
-<aside><a class="brand" href="<c:url value='/'/>">윱니와 동구</a>
-    <nav>
+<a class="skip-link" href="#content">본문으로 건너뛰기</a>
+<aside id="sidebar"><div class="brand-row"><a class="brand" href="<c:url value='/'/>">윱니와 동구<span>우리의 자산 기록</span></a><button type="button" id="menu-toggle" aria-controls="main-nav" aria-expanded="false">메뉴 열기</button></div>
+    <nav id="main-nav" aria-label="주 메뉴">
         <a href="<c:url value='/'/>">대시보드</a><strong>자산</strong><a href="<c:url value='/assets'/>">전체 자산 요약</a><a
             href="<c:url value='/cash'/>">현금성 자산</a><a href="<c:url value='/savings'/>">적금</a><a
             href="<c:url value='/securities'/>">증권</a><a href="<c:url value='/cards'/>">카드</a><strong>부채</strong><a
@@ -16,16 +17,18 @@
             src="<c:url value='/images/pompompurin.svg'/>" alt="폼폼푸린" width="82" height="95"></div>
     <p class="mascot-caption">차곡차곡, 우리 함께</p></aside>
 <main>
-    <header><h1 id="title"><c:out value="${pageTitle}"/></h1>
-        <div><span>조회 기준</span>
+    <header class="page-header"><div class="page-heading"><p class="eyebrow" id="view-context">함께 관리하는 자산</p><h1 id="title"><c:out value="${pageTitle}"/></h1><p id="page-description" class="page-description"></p></div>
+        <div class="header-actions"><div class="owner-control"><span>조회 기준</span>
             <div id="owner" class="segmented" role="group" aria-label="조회 기준">
                 <button type="button" data-owner="WIFE" aria-pressed="false">윱니</button>
                 <button type="button" data-owner="HUSBAND" aria-pressed="false">동구</button>
                 <button type="button" data-owner="JOINT" aria-pressed="false">공동</button>
             </div>
-            <button id="refresh">새로고침 · 스냅샷 저장</button>
+            </div>
+            <button id="refresh" title="연결 계좌의 잔고를 조회하고 현재 자산 스냅샷을 저장합니다.">자산 갱신 · 기록</button>
         </div>
     </header>
+    <div id="view-loading" class="view-loading" role="status" hidden>최신 화면을 불러오고 있습니다…</div>
     <div id="notice" role="status" aria-live="polite"></div>
-    <section id="content" aria-busy="true">불러오는 중입니다.</section>
+    <section id="content" aria-busy="true" tabindex="-1"><div class="loading-state"><span class="loading-dot" aria-hidden="true"></span>자산 정보를 불러오는 중입니다.</div></section>
 </main>

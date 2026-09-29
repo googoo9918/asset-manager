@@ -6,8 +6,10 @@ async function planned() {
     api("/plans"), api("/installments"), api("/installment-schedules")]);
   currentOccurrences = await api("/occurrences?month=" + calendarMonth);
   const calendarRows = accountPaymentOccurrences(currentOccurrences);
+  const visibleOccurrences=calendarRows.filter(o=>state.owner==="JOINT"||o.attribution===state.owner);
   pageTemplate();
   $("#calendar-month").value=calendarMonth;
+  $("#planned-summary").textContent=`${calendarMonth} · ${label("OwnerCode",state.owner)} · 미처리 ${visibleOccurrences.filter(o=>o.state==="PENDING").length}건 / 완료 ${visibleOccurrences.filter(o=>o.state==="COMPLETED").length}건`;
   $("#plan-list").innerHTML=
       table(
         ["이름", "주기", "시작일", "금액", "귀속", "관리"],
@@ -36,6 +38,7 @@ async function planned() {
   drawPlannedChart();
   $("#new-plan").onclick = () => editPlan();
   $("#calendar-month").onchange = run(async () => {
+    if(!$("#calendar-month").value){$("#calendar-month").value=calendarMonth;return;}
     calendarMonth = $("#calendar-month").value;
     await planned();
   });
@@ -66,6 +69,18 @@ async function planned() {
       );
       return `<div class="day ${date === today() ? "today" : ""}"><b>${i + 1}</b>${rows.map((o) => `<button class="${o.state === "COMPLETED" ? "done" : o.state === "CANCELLED" ? "cancelled" : ""}" data-action="occurrence-confirm" data-id="${o.id}">${esc(o.title)}<br>${o.state === "COMPLETED" ? "완료" : o.state === "CANCELLED" ? "취소" : o.amount ? krw(o.amount) : "실제 출금액 입력"}</button>`).join("")}</div>`;
     }).join("");
+  const days=new Map();
+  for(const o of [...visibleOccurrences].sort((a,b)=>(a.actualDate||a.dueDate).localeCompare(b.actualDate||b.dueDate))) {
+    const date=o.actualDate||o.dueDate;if(!days.has(date))days.set(date,[]);days.get(date).push(o);
+  }
+  $("#planned-agenda").innerHTML=days.size?[...days].map(([date,rows])=>`<section class="agenda-day"><h3>${esc(date)} ${date===today()?'<span class="status-badge status-warning">오늘</span>':''}</h3>${rows.map(o=>`<button type="button" class="agenda-item" data-action="occurrence-confirm" data-id="${o.id}"><span><strong>${esc(o.title)}</strong><small>${esc(label("Attribution",o.attribution))} · ${esc(accName(o.accountId))}</small></span><span>${statusBadge(o.state==="COMPLETED"?"완료":o.state==="CANCELLED"?"취소":"미처리",o.state==="COMPLETED"?"success":o.state==="CANCELLED"?"neutral":"warning")}<b>${o.amount!=null?krw(o.amount):"실제 출금액 입력"}</b></span></button>`).join("")}</section>`).join(""):emptyState("이번 달 예정 거래가 없습니다.","다른 달을 선택하거나 반복 지출을 등록해주세요.");
+  const setView=view=>{
+    $("#planned-calendar-wrap").hidden=view!=="calendar";$("#planned-agenda").hidden=view!=="list";
+    $("#planned-calendar-view").setAttribute("aria-pressed",String(view==="calendar"));$("#planned-list-view").setAttribute("aria-pressed",String(view==="list"));
+  };
+  setView(preference("planned-view",innerWidth<=700?"list":"calendar"));
+  $("#planned-calendar-view").onclick=()=>{localStorage.setItem("planned-view",JSON.stringify("calendar"));setView("calendar");};
+  $("#planned-list-view").onclick=()=>{localStorage.setItem("planned-view",JSON.stringify("list"));setView("list");};
 }
 function editPlan(p) {
   const v = p || {

@@ -28,9 +28,9 @@ async function openOrder(scope) {
         handle.setPointerCapture(e.pointerId);
         announce();
       }
-      const dialog=$("#modal"), bounds=dialog.getBoundingClientRect();
-      if(e.clientY>bounds.bottom-50) dialog.scrollTop+=12;
-      if(e.clientY<bounds.top+50) dialog.scrollTop-=12;
+      const body=$("#modal-body"), bounds=body.getBoundingClientRect();
+      if(e.clientY>bounds.bottom-50) body.scrollTop+=12;
+      if(e.clientY<bounds.top+50) body.scrollTop-=12;
     };
     const stop = () => row.classList.remove("dragging");
     handle.onpointerup = e => { if(handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId); stop(); };

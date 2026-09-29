@@ -5,7 +5,7 @@ function categoryFields(type, id) {
   const major = state.categories.filter(
     (x) => x.active && x.transactionType === type && !x.parentId,
   );
-  return `<div class="field"><label>대분류</label><select name="majorId"><option value="">선택</option>${major.map((x) => `<option value="${x.id}" ${eq(parent, x.id) ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><button type="button" data-add-category="major">대분류 추가</button></div><div class="field"><label>소분류</label><select name="categoryId"></select><button type="button" data-add-category="minor">소분류 추가</button></div>`;
+  return `<div class="field"><label>대분류<select name="majorId"><option value="">선택</option>${major.map((x) => `<option value="${x.id}" ${eq(parent, x.id) ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select></label><button type="button" data-add-category="major">대분류 추가</button></div><div class="field"><label>소분류<select name="categoryId"></select></label><button type="button" data-add-category="minor">소분류 추가</button></div>`;
 }
 function bindCategory(root, type, id) {
   const major = $("[name=majorId]", root),

@@ -8,10 +8,13 @@
             <input type="month" id="calendar-month" aria-label="조회 월">
             <button id="next">다음 달</button>
             <button id="new-plan" class="primary">반복 지출 등록</button>
+            <div class="segmented" id="planned-view" role="group" aria-label="예정 거래 표시 방식"><button type="button" id="planned-calendar-view" aria-pressed="true">달력</button><button type="button" id="planned-list-view" aria-pressed="false">목록</button></div>
         </div>
-        <div class="calendar-wrap">
+        <p id="planned-summary" class="muted" role="status"></p>
+        <div class="calendar-wrap" id="planned-calendar-wrap">
             <div class="calendar" id="calendar"></div>
         </div>
+        <div id="planned-agenda" hidden></div>
     </section>
     <section class="panel"><h2>등록한 반복 지출</h2>
         <div id="plan-list"></div>

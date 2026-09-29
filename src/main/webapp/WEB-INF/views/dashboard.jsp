@@ -3,6 +3,9 @@
 <%@ include file="common/header.jspf" %>
 <template id="page-template">
     <div id="dashboard-metrics"></div>
+    <div class="quick-links" aria-label="자주 쓰는 화면">
+        <a href="<c:url value='/transactions'/>">수입·지출 기록</a><a href="<c:url value='/planned'/>">예정 출금 확인</a><a href="<c:url value='/securities'/>">보유 종목 확인</a><a href="<c:url value='/snapshots'/>">자산 변동 비교</a>
+    </div>
     <div class="columns">
         <section class="panel"><h2>현재 자산 구성</h2>
             <div id="asset-composition"></div>

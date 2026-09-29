@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_CHANNEL||'msedge'});
  try {
-  const page=await browser.newPage(),errors=[],requests=[];let orders=[],preview=null,enabled=true,loseResponse=false,missingExchange=false;
+  const page=await browser.newPage(),errors=[],requests=[];let orders=[],preview=null,enabled=true,loseResponse=false,missingExchange=false,expiredPreview=false;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
    const req=route.request(),u=new URL(req.url()),p=u.pathname;
@@ -16,6 +16,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
     if(req.method()==='POST')requests.push({path:p,body:req.postDataJSON()});
     if(p.endsWith('/preview')) {
      const body=req.postDataJSON();preview={...body,id:'preview-1',accountName:'해외 메인',environment:'DEMO',status:'PREVIEW',price:body.orderType==='MARKET'?'0':body.orderType==='CURRENT'?'102.5':body.price,quotePrice:'102.5',quotedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+120000).toISOString(),createdAt:new Date().toISOString(),filledQuantity:'0',remainingQuantity:body.quantity,message:'전송 전'};
+     if(expiredPreview)preview.expiresAt=new Date(Date.now()-1000).toISOString();
      return route.fulfill({json:preview});
     }
     if(p.endsWith('/confirm')) {preview={...preview,status:'ACCEPTED',brokerOrderId:'123',message:'주문 접수'};orders=[preview];if(loseResponse)return route.abort('failed');return route.fulfill({json:preview});}
@@ -30,7 +31,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
    return route.fulfill({body:html,contentType:'text/html'});
   });
   const field=name=>page.locator('#stock-order-form [name="'+name+'"]');
-  await page.goto('http://asset.test/securities');await page.locator('#stock-order-new').click();
+  await page.goto('http://asset.test/securities#security-orders');await page.locator('#stock-order-new').click();
   await field('exchange').selectOption('NASD');await field('symbol').fill('aapl');await field('orderType').selectOption('CURRENT');await field('quantity').fill('2');
   assert.deepEqual(errors,[]);
   assert.equal(await page.locator('option[value="MARKET"]').evaluate(e=>e.disabled),true);assert.equal(await field('price').isDisabled(),true);
@@ -38,6 +39,10 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(requests.filter(r=>r.path.endsWith('/confirm')).length,0);
   assert.match(await page.locator('#modal-body').innerText(),/102\.5/);assert.match(await page.locator('#modal-body').innerText(),/205/);
   assert.equal(requests[0].body.symbol,'AAPL');assert.equal(requests[0].body.price,null);
+  await page.locator('#stock-order-edit').click();await field('symbol').waitFor();
+  assert.equal(await field('symbol').inputValue(),'AAPL');assert.equal(await field('quantity').inputValue(),'2');assert.equal(await field('orderType').inputValue(),'CURRENT');
+  await page.locator('#stock-order-preview').click();await page.locator('#stock-order-send').waitFor();
+  assert.equal(requests.filter(r=>r.path.endsWith('/confirm')).length,0);
   await page.locator('#stock-order-send').evaluate(b=>{b.click();b.click();});await page.locator('#stock-order-sync').waitFor();
   assert.equal(requests.filter(r=>r.path.endsWith('/confirm')).length,1);assert.deepEqual(requests.find(r=>r.path.endsWith('/confirm')).body,{});
   await page.locator('#stock-order-sync').click();await page.waitForFunction(()=>document.querySelector('#modal-body').textContent.includes('부분 체결'));
@@ -55,6 +60,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.waitForFunction(()=>document.querySelector('#stock-order-page').textContent.includes('16건'));
   assert.equal(await page.locator('#stock-order-list tbody tr').count(),15);await page.locator('#stock-order-next').click();assert.equal(await page.locator('#stock-order-list tbody tr').count(),1);
   // Portfolio selection requires an explicit account; never reuse its combined quantity.
+  await page.locator('#security-section-tabs a[href="#security-portfolio"]').click();
   await page.locator('#portfolio-table [data-action="holding-order"]').click();await field('symbol').waitFor();
   assert.equal(await field('symbol').inputValue(),'TEST');assert.equal(await field('symbol').evaluate(e=>e.readOnly),true);
   assert.equal(await field('accountId').inputValue(),'');assert.equal(await field('quantity').inputValue(),'1');
@@ -70,11 +76,20 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(requests.filter(r=>r.path.endsWith('/confirm')).length,3);
   await page.locator('#close-modal').click();
   // Account detail keeps its account and symbol, including after sorting.
+  await page.locator('#security-section-tabs a[href="#security-accounts"]').click();
   await page.locator('#security-list [data-action="security-detail"][data-id="4"]').first().click();
   await page.locator('#security-tab-body [data-holding-sort="value"]').click();
   await page.locator('#security-tab-body [data-action="holding-order"]').click();await field('symbol').waitFor();
   assert.equal(await field('accountId').inputValue(),'4');assert.equal(await field('accountId').isDisabled(),true);assert.equal(await field('exchange').inputValue(),'NYSE');
+  await field('orderType').selectOption('LIMIT');await field('price').fill('90.125');await field('quantity').fill('2');await field('side').selectOption('SELL');
+  expiredPreview=true;await page.locator('#stock-order-preview').click();await page.locator('#stock-order-send').waitFor();
+  const sentBeforeExpiry=requests.filter(r=>r.path.endsWith('/confirm')).length;await page.locator('#stock-order-send').click();
+  assert.match(await page.locator('#modal-error').innerText(),/만료/);assert.equal(requests.filter(r=>r.path.endsWith('/confirm')).length,sentBeforeExpiry);
+  await page.locator('#stock-order-edit').click();await field('symbol').waitFor();
+  assert.equal(await field('price').inputValue(),'90.125');assert.equal(await field('quantity').inputValue(),'2');assert.equal(await field('side').inputValue(),'SELL');assert.equal(await field('accountId').inputValue(),'4');
+  expiredPreview=false;
   await page.locator('#close-modal').click();missingExchange=true;
+  await page.locator('#security-section-tabs a[href="#security-portfolio"]').click();
   await page.locator('#portfolio-table [data-action="holding-order"]').click();await field('symbol').waitFor();await field('accountId').selectOption('3');
   assert.equal(await field('exchange').inputValue(),'');assert.equal(await field('exchange').isDisabled(),false);
   const missingBefore=requests.length;await page.locator('#stock-order-preview').click();assert.equal(requests.length,missingBefore);

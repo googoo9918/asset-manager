@@ -59,7 +59,7 @@ function holdingTable(rows,total,sort) {
       dualAmount(h.valueKrw,h.valueUsd,currency),cash?"—":dualAmount(sub(h.valueKrw,h.costKrw),h.valueUsd===null||h.costUsd===null?null:sub(h.valueUsd,h.costUsd),currency),
       cash||decimal(cost)===0n?"—":pct(profit,cost)+"%",pct(h.valueKrw,total)+"%",
       cash?"—":dailyPriceCell(h)];
-  }));
+  }),[0,2,6,8,10]);
   if(sort) for(const [index,metric] of [[6,"value"],[7,"profit"],[8,"return"]]) {
     const active=sort.metric===metric,ascending=sort.direction==="asc";
     html=html.replace(`<th>${esc(headers[index])}</th>`,`<th aria-sort="${active?(ascending?"ascending":"descending"):"none"}"><button type="button" data-holding-sort="${metric}" aria-label="${esc(headers[index])} ${active&&!ascending?"낮은":"높은"} 순 정렬">${esc(headers[index])} ${active?(ascending?"▲":"▼"):"↕"}</button></th>`);
@@ -94,6 +94,8 @@ async function securities() {
   const aa=own(state.accounts).filter(a=>a.assetType==="SECURITIES");
   const total = sum(aa.map(a=>a.currentBalanceKrw));
   pageTemplate();
+  bindSectionTabs();
+  $("#security-overview").innerHTML=`<div><span>증권 총자산 · 저장된 잔고 기준</span><strong>${krw(total)}</strong></div><div><span>보유 종목</span><strong>${portfolio.filter(p=>p.symbol!=="CASH").length}<small>종목</small></strong></div><div><span>증권계좌</span><strong>${aa.length}<small>개</small></strong></div>`;
   $("#trend-controls").innerHTML=trendControls();
   $("#reorder").onclick=run(()=>openOrder("SECURITIES"));
   $("#new-security").onclick=()=>editAccount(null,"SECURITIES");
@@ -104,7 +106,7 @@ async function securities() {
       const rate=accountFx(a), costUsd=nullableSum(hh.map(h=>usdValue(h,mul(h.averagePrice,h.quantity)))), valueUsd=nullableSum(hh.map(h=>usdValue(h,h.valueNative)));
 
       return [ action("security-detail",a.id,esc(a.accountName)), label("OwnerCode",a.ownerCode), krw(a.depositKrw)+" / USD $"+usdFormat(a.depositUsd), dualAmount(cost,costUsd),dualAmount(value,valueUsd),dualAmount(sub(value,cost),costUsd===null||valueUsd===null?null:sub(valueUsd,costUsd)),decimal(cost)===0n?"—":pct(sub(value,cost),cost)+"%",dualAmount(a.currentBalanceKrw,rate?div(a.currentBalanceKrw,rate):null),a.lastSyncedAt?esc(new Date(a.lastSyncedAt).toLocaleString("ko-KR")):"미갱신", action("security-detail",a.id,"종목 상세")+action("account-edit",a.id,"수정")+action("account-close",a.id,"해지")];
-    }));
+    }),[0,1,7,8,9]);
   };
   $("#security-search").oninput=draw; draw();
   let layout=preference("portfolio-layout","bar");
@@ -115,7 +117,10 @@ async function securities() {
     const rows=sortPortfolio(enrichedPortfolio(portfolio,holdings,aa),$("#portfolio-sort-metric").value,direction);
     $("#portfolio-chart").innerHTML=portfolioChart(rows,total,layout);
     const sort={metric:$("#portfolio-sort-metric").value,direction};
-    $("#portfolio-table").innerHTML=holdingTable(rows,total,sort);
+    const query=$("#portfolio-search").value.trim().toLocaleLowerCase();
+    const visible=rows.filter(h=>!query||[h.name,h.symbol].some(v=>String(v||"").toLocaleLowerCase().includes(query)));
+    $("#portfolio-results").textContent=query?`검색 결과 ${visible.length}건`:`총 ${rows.filter(h=>h.symbol!=="CASH").length}종목 · 예수금 별도 표시`;
+    $("#portfolio-table").innerHTML=visible.length?holdingTable(visible,total,sort):emptyState("표시할 종목이 없습니다.",query?"검색어를 바꾸거나 지워 전체 보유 종목을 확인하세요.":"증권계좌를 등록하고 자산을 갱신하면 보유 종목이 표시됩니다.");
     bindHoldingSort("#portfolio-table",sort,next=>{
       $("#portfolio-sort-metric").value=next.metric;
       $("#portfolio-sort").value=next.direction;
@@ -128,12 +133,28 @@ async function securities() {
   $$("[data-layout]").forEach(b=>b.onclick=()=>{layout=b.dataset.layout;localStorage.setItem("portfolio-layout",JSON.stringify(layout));drawPortfolio();});
   $("#portfolio-sort").onchange=()=>{localStorage.setItem("portfolio-sort",JSON.stringify($("#portfolio-sort").value));drawPortfolio();};
   $("#portfolio-sort-metric").onchange=()=>{localStorage.setItem("portfolio-sort-metric",JSON.stringify($("#portfolio-sort-metric").value));drawPortfolio();};
+  $("#portfolio-search").oninput=drawPortfolio;
   drawPortfolio();
   $("#trend-metric").value="SECURITIES";
   $("#trend-metric").closest("select").hidden=true;
-  await bindTrend();
-  await bindDailyPriceHistory();
-  await bindStockOrders();
+  // Optional history/order failures must not discard already-rendered account holdings.
+  $("#stock-order-new").disabled=true;
+  const owner=state.owner;
+  const section=async(selector,load)=>{
+    const container=$(selector);
+    try {await load();}
+    catch(e) {
+      if(owner!==state.owner||container!==$(selector))return;
+      container.innerHTML=`<div class="empty-state" role="status"><strong>이 내역을 불러오지 못했습니다.</strong><p>${esc(e.message)}</p><button type="button" class="section-retry">다시 조회</button></div>`;
+      $(".section-retry",container).onclick=async event=>{event.currentTarget.disabled=true;await section(selector,load);};
+    }
+  };
+  await Promise.all([
+    section("#trend",()=>bindTrend()),
+    section("#daily-price-history",()=>bindDailyPriceHistory()),
+    section("#stock-order-list",()=>bindStockOrders())
+  ]);
+  bindSectionTabs();
 }
 
 function dailyPercent(value) {

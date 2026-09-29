@@ -106,6 +106,7 @@ document.addEventListener(
   }),
 );
 $("#title").textContent = names[page] || names.dashboard;
+initUi();
 // 미선택 버튼도 전환 가능해야 하므로 disabled 대신 aria-pressed와 색상으로 선택 상태를 전달한다.
 function drawOwnerButtons() {
   $$("[data-owner]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.owner === state.owner)));
@@ -128,17 +129,21 @@ $$("nav a").forEach((a) =>
 );
 $("#refresh").onclick = run(async () => {
   const b = $("#refresh");
+  if(b.disabled)return;
   b.disabled = true;
+  const original=b.textContent;b.textContent="갱신하고 저장 중…";
+  let snapshotSaved=false;
   try {
     const r = await api("/refresh", "POST");
+    snapshotSaved=true;
     await loadBase();
     await render();
     notice("스냅샷 #" + r.id + " 저장 · " + r.syncStatus);
+  } catch(e) {
+    notice(snapshotSaved?"자산 기록은 저장되었습니다. 화면 조회에 실패했으니 페이지를 새로고침해주세요. "+e.message:e.message,true);
   } finally {
     b.disabled = false;
+    b.textContent=original;
   }
 });
-run(async () => {
-  await loadBase();
-  await render();
-})();
+loadScreen();

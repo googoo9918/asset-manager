@@ -23,6 +23,7 @@ async function bindTrend() {
       }
       $("#trend-from").value = from;
     }
+    if(from&&to&&from>to)throw new Error("추이 시작일은 종료일보다 늦을 수 없습니다.");
     const latest = new Map();
     rows.forEach((r) => {
       const d = new Intl.DateTimeFormat("sv-SE", {
@@ -96,6 +97,7 @@ async function bindTrend() {
     $("#trend-period").onchange =
     $("#trend-metric").onchange =
       run(draw);
+  $("#trend-from").onchange=$("#trend-to").onchange=()=>{$("#trend-period").value="custom";};
   await draw();
 }
 
@@ -202,7 +204,7 @@ function lineChart(points, title = "자산 추이") {
     const left=i===0?50:(xy[i-1][0]+x)/2, right=i===xy.length-1?880:(x+xy[i+1][0])/2;
     return `<rect x="${left}" y="20" width="${Math.max(1,right-left)}" height="180" fill="transparent" ${tipAttrs(points[i].date,points[i].value,points[i].extra||title)} aria-label="${esc(points[i].date+" "+krw(points[i].value))}"/>`;
   }).join("");
-  return `<svg class="chart" viewBox="0 0 930 235" role="img" aria-label="${esc(title)}"><path d="M65 25V185H885" fill="none" stroke="#DAD2B7"/><polyline points="${xy.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#B18512" stroke-width="3"/>${xy.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#B18512"/>`).join("")}<text x="65" y="218">${esc(points[0].date)}</text><text x="780" y="218">${esc(points.at(-1).date)}</text><text x="65" y="16">${esc(title)} · 최고 ${krw(points[values.indexOf(max)].value)}</text>${hits}</svg>`;
+  return `<div class="chart-scroll"><svg class="chart" viewBox="0 0 930 235" role="img" aria-label="${esc(title)}"><path d="M65 25V185H885" fill="none" stroke="#DAD2B7"/><polyline points="${xy.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#B18512" stroke-width="3"/>${xy.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#B18512"/>`).join("")}<text x="65" y="218">${esc(points[0].date)}</text><text x="780" y="218">${esc(points.at(-1).date)}</text><text x="65" y="16">${esc(title)} · 최고 ${krw(points[values.indexOf(max)].value)}</text>${hits}</svg></div>`;
 }
 /** 거래일별 실제 기록만 합산한다. 자산이체, 카드대금 출금, 취소거래는 수입/지출 그래프에서 제외한다. */
 function transactionPoints(rows, type, from, to) {

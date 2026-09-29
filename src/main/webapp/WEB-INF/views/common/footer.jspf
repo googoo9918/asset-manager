@@ -1,11 +1,11 @@
 <%@ page pageEncoding="UTF-8" %>
-<dialog id="modal">
+<dialog id="modal" aria-labelledby="modal-title" aria-describedby="modal-error">
     <form id="editor">
-        <div class="dialog-head"><h2 id="modal-title">등록</h2>
+        <div class="dialog-head"><h2 id="modal-title" tabindex="-1">등록</h2>
             <button type="button" id="close-modal" aria-label="닫기">×</button>
         </div>
         <div id="modal-body"></div>
-        <div id="modal-error" role="alert"></div>
+        <div id="modal-error" role="alert" tabindex="-1"></div>
         <footer>
             <button type="button" id="cancel-modal">취소</button>
             <button type="submit" class="primary" id="save-modal">저장</button>
@@ -24,8 +24,12 @@
     </form>
 </dialog>
 <div id="chart-tooltip" role="tooltip" hidden></div>
+<nav class="mobile-nav" aria-label="자주 쓰는 화면">
+    <a href="<c:url value='/'/>">홈</a><a href="<c:url value='/transactions'/>">거래내역</a><a href="<c:url value='/securities'/>">증권</a><a href="<c:url value='/planned'/>">예정 거래</a>
+</nav>
 <script src="<c:url value='/js/common/core.js'/>"></script>
 <script src="<c:url value='/js/common/dialogs.js'/>"></script>
 <script src="<c:url value='/js/common/charts.js'/>"></script>
 <script src="<c:url value='/js/common/order.js'/>"></script>
 <script src="<c:url value='/js/common/occurrence-editor.js'/>"></script>
+<script src="<c:url value='/js/common/ui.js'/>"></script>
