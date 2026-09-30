@@ -863,3 +863,6 @@ details > summary { cursor: pointer; padding: 12px 0; color: #625d50; font-size:
   .record-table .empty { text-align: center; }
   .record-table.is-scrollable { border: 0; }
 }
+#card-billing .billing-card { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+#card-billing .billing-card > summary { font-weight: 700; cursor: pointer; line-height: 1.6; }
+#card-billing .billing-card .toolbar { margin-top: 16px; }

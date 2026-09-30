@@ -190,6 +190,7 @@ public class CatalogService {
         activeAccount(c.getAccountId()).getAssetType() == AssetType.CASH, "카드 결제계좌는 현금성 계좌여야 합니다.");
     check(c.getCardType() != CardType.CREDIT || c.getPaymentDay() != null, "신용카드 결제일을 입력해주세요.");
     if (c.getCardType() == CardType.DEBIT) c.setPaymentDay(null);
+    CardBillingService.validate(c);
     c.setId(id);
     if (id == null) cards.insert(c);
     else {

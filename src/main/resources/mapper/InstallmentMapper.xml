@@ -7,4 +7,5 @@
  INSERT INTO initial_installment (card_id, remaining_months, remaining_amount, memo, active, first_payment_date) VALUES (#{cardId}, #{remainingMonths}, #{remainingAmount}, #{memo}, #{active}, #{firstPaymentDate})
  </insert>
  <update id="update" parameterType="com.family.asset.dto.Installment">UPDATE initial_installment SET card_id=#{cardId}, remaining_months=#{remainingMonths}, remaining_amount=#{remainingAmount}, memo=#{memo}, active=#{active}, first_payment_date=#{firstPaymentDate}, updated_at=now() WHERE id=#{id}</update>
+ <update id="linkSource">UPDATE initial_installment SET source_entry_id=#{entryId}, updated_at=now() WHERE id=#{id}</update>
 </mapper>

@@ -27,6 +27,7 @@ async function cards() {
         "소유자",
         "유형",
         "결제계좌",
+        "이용기간 마감",
         "이번 달 사용액",
         "이번 결제 일정",
         "관리",
@@ -38,6 +39,7 @@ async function cards() {
           label("OwnerCode", c.ownerCode),
           label("CardType", c.cardType),
           esc(accName(c.accountId)),
+          c.cardType==='DEBIT'?'즉시 출금':c.billingClosingDay?`${['당월','전월','전전월'][c.billingMonthOffset]} ${c.billingClosingDay===31?'말일':c.billingClosingDay+'일'}`:'미설정',
           krw(
             sum(
               es
@@ -63,6 +65,7 @@ async function cards() {
   };
   $("#search").oninput = $("#status").onchange = draw;
   draw();
+  if(typeof bindCardBilling==='function')bindCardBilling();
   $("#card-chart-month").value=monthNow();
   $("#card-chart-month").onchange=run(drawCardChart);
   await drawCardChart();

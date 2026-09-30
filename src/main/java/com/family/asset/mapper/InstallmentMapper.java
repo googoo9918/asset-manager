@@ -11,4 +11,6 @@ public interface InstallmentMapper {
   int insert(Installment value);
 
   int update(Installment value);
+  int linkSource(@org.apache.ibatis.annotations.Param("id") Long id,
+      @org.apache.ibatis.annotations.Param("entryId") Long entryId);
 }

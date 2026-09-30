@@ -12,6 +12,7 @@ public class Installment {
   private OffsetDateTime createdAt;
   private OffsetDateTime updatedAt;
   @NotNull private Long cardId;
+  private Long sourceEntryId;
 
   @NotNull
   @Min(0)

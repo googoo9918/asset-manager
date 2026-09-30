@@ -25,5 +25,8 @@ public class Card {
   @Max(31)
   private Integer paymentDay;
 
+  @Min(1) @Max(31) private Integer billingClosingDay;
+  @Min(0) @Max(2) private Integer billingMonthOffset;
+
   @NotNull private AssetStatus status;
 }
