@@ -6,10 +6,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  const browser=await chromium.launch({headless:true,channel:'msedge'});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],writes=[];
-  let existing=[];
+  let existing=[],backups=[],backupWrites=0;
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
    const r=route.request(),u=new URL(r.url()),p=u.pathname;
+   if(p==='/api/backups') {
+    if(r.method()==='POST'){backupWrites++;backups=[{name:'backup-00000000-0000-0000-0000-000000000001.zip',createdAt:'2026-09-30T00:00:00Z',bytes:2048}];return route.fulfill({json:backups[0]});}
+    return route.fulfill({json:{available:true,running:false,message:'백업 준비됨',backups}});
+   }
    if(p==='/api/securities/trades')return route.fulfill({json:existing});
    if(r.method()==='POST'&&(p.endsWith('/trades/import')||p.endsWith('/adjustments'))){writes.push({p,body:r.postDataJSON()});return route.fulfill({json:{message:'saved'}});}
    if(p.startsWith('/api/'))return route.fulfill({json:fixtures(u.href)});
@@ -21,6 +25,9 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   });
   const ready=()=>page.waitForSelector('#content[aria-busy="false"]');
   await page.goto('http://asset.test/settings');await ready();
+  await page.locator('#backup-create').click();await page.locator('#backup-list a').waitFor();
+  assert.equal(backupWrites,1);assert.match(await page.locator('#backup-list a').getAttribute('href'),/\/api\/backups\/backup-/);
+  assert.match(await page.locator('#backup-status').innerText(),/최근 백업/);
   assert.equal(await page.locator('textarea').count(),0);
   await page.locator('#import-button button').click();
   await page.locator('[name=symbol]').fill('voo');await page.locator('[name=amount]').fill('10.25');

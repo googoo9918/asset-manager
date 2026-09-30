@@ -6,6 +6,32 @@ async function settings() {
   $('#settings-summary').innerHTML=detailGrid({'KIS 연동':s.kisEnabled?'사용':'사용 안 함','공통 인증정보':s.credentialConfigured?'설정됨':'미설정 (개별 설정 사용 가능)','개별 인증 계좌':names.join(', ')||'없음','기준 시간대':s.zone,'자동 스냅샷':s.snapshotTime+' (앱 실행 중)','API 주소':s.baseUrl});
   $('#settings-trading').innerHTML=`<p>${statusBadge(trading.enabled?'주문 활성화':'주문 비활성화',trading.enabled?'success':'neutral')} ${statusBadge(trading.environment==='REAL'?'실전 투자':trading.environment==='DEMO'?'모의 투자':'서버 설정 확인',trading.environment==='REAL'?'warning':'info')}</p>`;
   $('#import-button').append(button('배당·입출금 기록',openSecurityRecord));
+  bindBackups();
+}
+function bindBackups() {
+  const status=$('#backup-status'),create=$('#backup-create'),reload=$('#backup-reload'),list=$('#backup-list');
+  let creating=false;
+  const refresh=async()=>{
+    reload.disabled=true;
+    try {
+      const result=await api('/backups');
+      if(status!==$('#backup-status'))return;
+      const items=result.backups||[];
+      create.disabled=creating||result.running||!result.available;
+      status.textContent=result.running?'백업을 생성하고 있습니다. 잠시 후 목록을 새로고침해주세요.':(result.message||'')+(items.length?' 최근 백업: '+new Date(items[0].createdAt).toLocaleString('ko-KR'):' 아직 생성한 백업이 없습니다.');
+      list.innerHTML=items.length?table(['생성 시각','파일 크기','다운로드'],items.map(b=>[esc(new Date(b.createdAt).toLocaleString('ko-KR')),fmt(Math.ceil(b.bytes/1024))+' KB',`<a href="${ctx}/api/backups/${encodeURIComponent(b.name)}" download>백업 ZIP 받기</a>`]),[0,1,2]):emptyState('첫 백업을 만들어주세요.','백업 파일은 생성 후 이 목록에서 다운로드할 수 있습니다.');
+    }catch(e){if(status===$('#backup-status')){status.textContent='백업 상태를 확인하지 못했습니다. '+e.message;create.disabled=true;}}
+    finally{reload.disabled=creating;}
+  };
+  reload.onclick=refresh;
+  create.onclick=async()=>{
+    if(creating)return;
+    creating=true;create.disabled=true;reload.disabled=true;create.textContent='백업 생성 중…';status.textContent='DB와 전표를 백업하고 있습니다. 완료 후 다운로드할 수 있습니다.';
+    try{await api('/backups','POST',{});creating=false;await refresh();}
+    catch(e){status.textContent='백업을 만들지 못했습니다. '+e.message;create.disabled=false;}
+    finally{creating=false;create.textContent='지금 백업 만들기';reload.disabled=false;}
+  };
+  refresh();
 }
 function openSecurityRecord() {
   const accounts=own(state.accounts).filter(a=>a.assetType==='SECURITIES'&&a.status==='ACTIVE');

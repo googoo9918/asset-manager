@@ -1,4 +1,6 @@
 # Build output (including portable Node.js and disposable test databases)
+__pycache__/
+*.pyc
 /.gradle/
 /build/
 /out/
