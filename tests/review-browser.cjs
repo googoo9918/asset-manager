@@ -10,7 +10,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  await page.route('http://asset.test/**',async route=>{
  const r=route.request(),u=new URL(r.url()),p=u.pathname;
  if(p==='/api/review')return route.fulfill(fail?{status:500,json:{message:'test failure'}}:{json:{items}});
- if(p.startsWith('/api/review/entries/')){writes.push({p,body:r.postDataJSON()});items=items.filter(i=>i.targetId!==Number(p.split('/')[4]));return route.fulfill({status:204});}
+ if(p.startsWith('/api/review/entries/')){writes.push({p,body:r.postDataJSON()});items=items.filter(i=>i.targetId!==Number(p.split('/')[4]));return route.fulfill({status:200,body:''});}
  if(/^\/api\/transactions\/\d+$/.test(p))return route.fulfill({json:{id:Number(p.split('/').pop()),transactionDate:'2026-09-30',transactionType:'EXPENSE',amount:1000,memo:'거래',categoryId:null,origin:'MANUAL'}});
  if(p.startsWith('/api/')){assert.equal(r.method(),'GET');return route.fulfill({json:fixtures(u.href)});}
  const file=path.join(root,'src/main/resources/static',p);

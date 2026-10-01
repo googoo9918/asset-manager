@@ -118,7 +118,9 @@ async function api(url, method = "GET", body) {
     } catch {}
     throw new Error(e?.message || `요청 실패 (${r.status})`);
   }
-  return r.status === 204 ? null : r.json();
+  if (r.status === 204) return null;
+  const text = await r.text();
+  return text.trim() ? JSON.parse(text) : null;
 }
 function notice(message, error = false) {
   $("#notice").textContent = message;

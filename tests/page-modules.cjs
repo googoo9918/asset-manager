@@ -56,7 +56,7 @@ async function runPage(name){
  document={body:new Element(),querySelector:s=>s.startsWith('#')?ids.get(s.slice(1))||null:s.startsWith('[name=')?ids.get('name:'+s.match(/name=([^\]]+)/)[1])||null:null,querySelectorAll:()=>[],createElement:()=>new Element(),addEventListener(){}};document.body.dataset={};
  const html=expandedJsp(name+'.jsp');parse(html);
  const tpl=html.match(/<template id="page-template">([\s\S]*?)<\/template>/)[1];ids.get('page-template').content={cloneNode:()=>({html:tpl})};
- const sandbox={document,location:{pathname:name==='dashboard'?'/':'/'+name},sessionStorage:{getItem:()=>null,setItem(){}},localStorage:{getItem:()=>null,setItem(){}},Intl,Date,URLSearchParams,innerWidth:1300,innerHeight:900,fetch:async url=>({ok:true,status:200,json:async()=>fixtures(url)}),console};vm.createContext(sandbox);
+ const sandbox={document,location:{pathname:name==='dashboard'?'/':'/'+name},sessionStorage:{getItem:()=>null,setItem(){}},localStorage:{getItem:()=>null,setItem(){}},Intl,Date,URLSearchParams,innerWidth:1300,innerHeight:900,fetch:async url=>({ok:true,status:200,text:async()=>JSON.stringify(fixtures(url))}),console};vm.createContext(sandbox);
  const scripts=[...html.matchAll(/value='(\/js\/[^']+)'/g)].map(m=>m[1]);
  for(const file of scripts){let code=read(path.join(base,file));if(file.endsWith('/events.js'))code=code.slice(0,code.indexOf('$("#title").textContent'));vm.runInContext(code,sandbox,{filename:file});}
  await vm.runInContext('loadBase()',sandbox);await vm.runInContext('renderPage()',sandbox);
@@ -119,9 +119,9 @@ async function runPage(name){
  }
  if(name==='transactions') {
   let rows=Array.from({length:31},(_,i)=>({...entries[0],id:i+1,memo:`거래-${i+1}`})),requests=0;
-  sandbox.fetch=async url=>({ok:true,status:200,json:async()=>{
-   if(new URL(url,'http://test').pathname==='/api/transactions'){requests++;return rows;}
-   return fixtures(url);
+  sandbox.fetch=async url=>({ok:true,status:200,text:async()=>{
+   if(new URL(url,'http://test').pathname==='/api/transactions'){requests++;return JSON.stringify(rows);}
+   return JSON.stringify(fixtures(url));
   }});
   await ids.get('filter').onclick();
   const count=()=>[...ids.get('entries').innerHTML.matchAll(/data-action="entry-detail"/g)].length;
