@@ -27,6 +27,24 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  assert.equal(writes[1].billingClosingDay,'31');assert.equal(writes[1].billingMonthOffset,'1');
  await page.locator('#card-billing [data-action=card-edit]').click();await page.locator('[name=billingMonthOffset]').selectOption('');await page.locator('#save-modal').click();await page.locator('#modal').waitFor({state:'hidden'});
  assert.equal(writes[2].billingClosingDay,null);assert.equal(writes[2].billingMonthOffset,null);
+ await page.locator('#card-billing [data-action=card-edit]').click();
+ await page.locator('[name=paymentDay]').fill('25');
+ await page.locator('[name=billingStartMonthOffset]').selectOption('1');
+ await page.locator('[name=billingStartDay]').fill('15');
+ assert.equal(await page.locator('[name=billingMonthOffset]').inputValue(),'0');
+ assert.equal(await page.locator('[name=billingClosingDay]').inputValue(),'14');
+ assert.match(await page.locator('#billing-period-preview').innerText(),/전월 15일 ~ 당월 14일/);
+ for(const width of [320,390,1440]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.querySelector('#modal').scrollWidth<=document.querySelector('#modal').clientWidth+1),true);}
+ await page.locator('#save-modal').click();await page.locator('#modal').waitFor({state:'hidden'});
+ assert.equal(writes[3].billingClosingDay,'14');assert.equal(writes[3].billingMonthOffset,'0');assert.equal('billingStartDay' in writes[3],false);
+ await page.locator('#card-billing [data-action=card-edit]').click();
+ assert.equal(await page.locator('[name=billingStartMonthOffset]').inputValue(),'1');assert.equal(await page.locator('[name=billingStartDay]').inputValue(),'15');
+ await page.locator('[name=billingClosingDay]').fill('25');await page.locator('#save-modal').click();assert.equal(writes.length,4);
+ await page.locator('[name=billingClosingDay]').fill('');assert.match(await page.locator('#billing-period-preview').innerText(),/종료일을/);
+ await page.locator('[name=billingMonthOffset]').selectOption('1');await page.locator('[name=billingClosingDay]').fill('31');
+ assert.equal(await page.locator('[name=billingStartMonthOffset]').inputValue(),'1');assert.equal(await page.locator('[name=billingStartDay]').inputValue(),'1');
+ await page.locator('#save-modal').click();await page.locator('#modal').waitFor({state:'hidden'});
+ assert.equal(writes[4].billingClosingDay,'31');assert.equal(writes[4].billingMonthOffset,'1');
  for(const width of [1440,390,320]){await page.setViewportSize({width,height:900});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);}
  assert.deepEqual(errors,[]);console.log('PASS billing statement paging, legacy link, period settings save/reset and responsive layout');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

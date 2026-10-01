@@ -12,7 +12,7 @@
     </section>
 </template>
 <%@ include file="common/footer.jspf" %>
-<script src="<c:url value='/js/common/card-editor.js'/>?v=20260930-billing-1"></script>
+<script src="<c:url value='/js/common/card-editor.js'/>?v=20261001-period-2"></script>
 <script src="<c:url value='/js/pages/review.js'/>?v=20260930-review-1"></script>
 <script src="<c:url value='/js/common/events.js'/>"></script>
 </body></html>

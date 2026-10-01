@@ -8,35 +8,55 @@ function editCard(c) {
   };
   modal(
     c ? "카드 수정" : "카드 등록",
-    `<div class="fields">${field("cardName", "카드명", v.cardName, "text", "required")}${enumField("ownerCode", "소유자", "OwnerCode", v.ownerCode)}${enumField("cardType", "카드 유형", "CardType", v.cardType)}${select("accountId", "연결 결제계좌", accountOpts(v.accountId, true))}${field("paymentDay", "결제일", v.paymentDay, "number", 'min="1" max="31"')}</div><h3>신용공여기간 · 결제 대상 이용기간</h3><p class="muted">카드사 안내의 일시불·할부 이용기간을 입력하세요. 시작일은 이전 마감일 다음 날로 계산합니다.</p><div class="fields">${select('billingMonthOffset','이용기간 마감 월',['<option value="">미설정</option>',...[['0','결제월 당월'],['1','결제월의 전월'],['2','결제월의 전전월']].map(([value,name])=>`<option value="${value}" ${String(v.billingMonthOffset)===value?'selected':''}>${name}</option>`)].join(''))}${field('billingClosingDay','이용기간 마감일 (31 = 말일)',v.billingClosingDay||'','number','min="1" max="31"')}</div><p id="billing-period-preview" role="status"></p><p class="muted">변경한 설정은 과거 명세의 예상액도 다시 계산합니다. 실제 출금 기록은 바꾸지 않습니다. 휴일 이연·매입 지연·수수료·할인은 자동 반영하지 않습니다.</p>`,
+    `<div class="fields">${field("cardName", "카드명", v.cardName, "text", "required")}${enumField("ownerCode", "소유자", "OwnerCode", v.ownerCode)}${enumField("cardType", "카드 유형", "CardType", v.cardType)}${select("accountId", "연결 결제계좌", accountOpts(v.accountId, true))}${field("paymentDay", "결제일", v.paymentDay, "number", 'min="1" max="31"')}</div><h3>신용공여기간 · 결제 대상 이용기간</h3><p class="muted">결제월을 기준으로 입력하세요. 예: 전월 15일 ~ 당월 14일. 매월 빠지거나 겹치는 날이 없도록 시작일과 종료일은 서로 연결됩니다.</p><div class="fields">${select('billingStartMonthOffset','이용 시작 월',['<option value="">미설정</option>',...['당월','전월','전전월','전전전월'].map((name,i)=>`<option value="${i}">${name}</option>`)].join(''))}${field('billingStartDay','이용 시작일','','number','min="1" max="31"')}${select('billingMonthOffset','이용 종료 월',['<option value="">미설정</option>',...[['0','당월'],['1','전월'],['2','전전월']].map(([value,name])=>`<option value="${value}" ${String(v.billingMonthOffset)===value?'selected':''}>${name}</option>`)].join(''))}${field('billingClosingDay','이용 종료일 (31 = 말일)',v.billingClosingDay||'','number','min="1" max="31"')}</div><p id="billing-period-preview" role="status"></p><p class="muted">짧은 달은 이전 달 종료일 다음 날부터 계산하며 실제 날짜 예시로 확인할 수 있습니다. 변경한 설정은 과거 명세의 예상액도 다시 계산합니다. 실제 출금 기록은 바꾸지 않습니다. 휴일 이연·매입 지연·수수료·할인은 자동 반영하지 않습니다.</p>`,
     () => {
       const data={
         ...v,
         ...formData($("#modal-body")),
       };
-      if(!data.billingMonthOffset&&data.billingMonthOffset!==0){data.billingMonthOffset=null;data.billingClosingDay=null;}
+      delete data.billingStartMonthOffset;delete data.billingStartDay;
+      if(data.cardType==='DEBIT'||(!data.billingMonthOffset&&data.billingMonthOffset!==0)){data.billingMonthOffset=null;data.billingClosingDay=null;}
       return api("/cards" + (c ? "/" + c.id : ""), c ? "PUT" : "POST",data);
     },
   );
   $("[name=cardType]").onchange = () => {
     const debit=$("[name=cardType]").value === "DEBIT";
     $("[name=paymentDay]").disabled=debit;$("[name=paymentDay]").required=!debit;
-    $('[name=billingMonthOffset]').disabled=debit;
+    $('[name=billingMonthOffset]').disabled=debit;$('[name=billingStartMonthOffset]').disabled=debit;
     updatePeriod();
   };
-  const updatePeriod=()=>{
+  const updatePeriod=(fromStart=false)=>{
+    const startMonth=$('[name=billingStartMonthOffset]'),startDay=$('[name=billingStartDay]'),endMonth=$('[name=billingMonthOffset]'),endDay=$('[name=billingClosingDay]');
+    startMonth.setCustomValidity('');startDay.setCustomValidity('');endDay.setCustomValidity('');
+    if(fromStart){
+      if(startMonth.value===''){endMonth.value='';endDay.value='';}
+      else {
+        startDay.disabled=false;startDay.required=true;
+        const first=Number(startDay.value);
+        if(!Number.isInteger(first)||first<1||first>31){$('#billing-period-preview').textContent='시작일을 1~31일로 입력해주세요.';return;}
+        const offset=Number(startMonth.value)-(first===1?0:1);
+        if(offset<0||offset>2){startMonth.setCustomValidity('종료 월이 당월·전월·전전월에 해당하도록 시작 월을 선택해주세요.');$('#billing-period-preview').textContent=startMonth.validationMessage;return;}
+        endMonth.value=String(offset);endDay.value=String(first===1?31:first-1);
+      }
+    }
     const debit=$('[name=cardType]').value==='DEBIT',offset=$('[name=billingMonthOffset]').value,day=$('[name=billingClosingDay]');
     day.disabled=debit||offset==='';day.required=!day.disabled;
-    if(offset==='')day.value='';else if(!day.value)day.value='31';
+    startDay.disabled=day.disabled;startDay.required=day.required;
+    if(offset===''){day.value='';startMonth.value='';startDay.value='';}
+    if(offset!==''&&day.value&&Number(day.value)>=1&&Number(day.value)<=31){startMonth.value=String(Number(offset)+(Number(day.value)===31?0:1));startDay.value=String(Number(day.value)===31?1:Number(day.value)+1);}
     if(debit||offset===''){$('#billing-period-preview').textContent=debit?'체크카드는 이용 즉시 출금되어 신용공여기간을 사용하지 않습니다.':'이용기간을 설정하면 이용내역별 예정 청구액을 확인할 수 있습니다.';return;}
     const [y,m]=monthNow().split('-').map(Number),closing=Number(day.value),payment=Number($('[name=paymentDay]').value);
-    if(closing<1||payment<1||closing>31||payment>31)return;
-    if(offset==='0'&&closing>=payment){$('#billing-period-preview').textContent='당월 마감일은 결제일보다 앞서야 합니다.';return;}
+    if(!Number.isInteger(closing)||closing<1||closing>31){$('#billing-period-preview').textContent='종료일을 1~31일로 입력해주세요.';return;}
+    if(!Number.isInteger(payment)||payment<1||payment>31){$('#billing-period-preview').textContent='결제일을 1~31일로 입력해주세요.';return;}
+    if(offset==='0'&&closing>=payment){day.setCustomValidity('당월 종료일은 결제일보다 앞서야 합니다.');$('#billing-period-preview').textContent=day.validationMessage;return;}
     const date=(month,d)=>new Date(Date.UTC(y,month,Math.min(d,new Date(Date.UTC(y,month+1,0)).getUTCDate())));
     const end=date(m-1-Number(offset),closing),start=date(m-2-Number(offset),closing);start.setUTCDate(start.getUTCDate()+1);
-    $('#billing-period-preview').textContent=`예: ${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)} 이용분 → ${date(m-1,payment).toISOString().slice(0,10)} 결제 예정`;
+    $('#billing-period-preview').textContent=`${['당월','전월','전전월','전전전월'][Number(startMonth.value)]} ${startDay.value}일 ~ ${['당월','전월','전전월'][Number(offset)]} ${closing===31?'말일':closing+'일'} · 예: ${start.toISOString().slice(0,10)} ~ ${end.toISOString().slice(0,10)} 이용분 → ${date(m-1,payment).toISOString().slice(0,10)} 결제 예정`;
   };
-  $('[name=billingMonthOffset]').onchange=updatePeriod;$('[name=billingClosingDay]').oninput=updatePeriod;$('[name=paymentDay]').oninput=updatePeriod;
+  $('[name=billingMonthOffset]').onchange=()=>{if($('[name=billingMonthOffset]').value!==''&&!$('[name=billingClosingDay]').value)$('[name=billingClosingDay]').value='31';updatePeriod();};
+  $('[name=billingClosingDay]').oninput=()=>updatePeriod();$('[name=paymentDay]').oninput=()=>updatePeriod();
+  $('[name=billingStartMonthOffset]').onchange=()=>{if($('[name=billingStartMonthOffset]').value!==''&&!$('[name=billingStartDay]').value)$('[name=billingStartDay]').value='1';updatePeriod(true);};
+  $('[name=billingStartDay]').oninput=()=>updatePeriod(true);
   $("[name=cardType]").onchange();
   if (c) {
     $("[name=cardType]").disabled = true;
