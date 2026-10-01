@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 (async()=>{
  const browser=await chromium.launch({headless:true,channel:'msedge'});
  try {
-  const page=await browser.newPage(),errors=[],requests=[];
+  const page=await browser.newPage(),errors=[],requests=[],commits=[],links=[];
   let running=false,polls=0;
   const headers=['이용일시','이용카드명','이용하신곳','이용금액','결제방법','할인금액','적립예상포인트리','상태','승인번호'];
   const data=Array.from({length:300},(_,i)=>['2026.09.15\n10:00','카드 A','가맹점 '+i,'1000원','일시불','0원','0P','전표매입',String(i)]);
@@ -13,6 +13,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
     const request=route.request(),u=new URL(request.url()),p=u.pathname;
+    if(p==='/api/kb-card/commit'){commits.push(request.postDataJSON());return route.fulfill({json:{imported:commits.at(-1).indices.length}});}
+    if(p.startsWith('/api/allowance/source/')){links.push(request.postDataJSON());return route.fulfill({status:200,body:''});}
     if(p==='/api/kb-card/connect')return route.fulfill({json:{connected:true,code:'test'}});
     if(p==='/api/kb-card/collect'){requests.push(request.postDataJSON());running=true;polls=0;return route.fulfill({json:{state:'running'}});}
     if(p==='/api/kb-card/collection'){
@@ -21,7 +23,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
     }
     if(p==='/api/kb-card/latest')return route.fulfill({json:result});
     if(p==='/api/kb-card/mappings')return route.fulfill({json:request.method()==='PUT'?request.postDataJSON():[]});
-    if(p==='/api/kb-card/preview')return route.fulfill({json:{previewId:'test',rows:data.map((r,index)=>({index,status:index===299?'DUPLICATE':'READY',reason:index===299?'이미 등록된 내역':'등록 가능',row:{date:'2026-09-15',merchant:r[2],amount:'1000',installmentMonths:1},categoryId:null}))}});
+    if(p==='/api/kb-card/preview')return route.fulfill({json:{previewId:'test',rows:data.map((r,index)=>({index,sourceEntryId:index===299?999:null,allowanceOwner:index===299?'WIFE':null,status:index===299?'DUPLICATE':'READY',reason:index===299?'이미 등록된 내역':'등록 가능',row:{date:'2026-09-15',merchant:r[2],amount:'1000',installmentMonths:1},categoryId:null}))}});
     if(p.startsWith('/api/'))return route.fulfill({json:fixtures(u.href)});
     const file=path.join(root,'src/main/resources/static',p);
     if(fs.existsSync(file)&&fs.statSync(file).isFile())return route.fulfill({body:fs.readFileSync(file),contentType:p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'image/svg+xml'});
@@ -54,10 +56,18 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(await page.locator('#kb-preview-rows tbody tr:visible').count(),15);await page.locator('[data-kb-row="15"]').check();
   await page.locator('#kb-preview-prev').click();assert.equal(await page.locator('[data-kb-row="0"]').isChecked(),true);
   assert.match(await page.locator('#kb-selection-summary').innerText(),/2건 선택/);
+  assert.equal(await page.locator('[data-kb-allowance="0"]').inputValue(),'');
+  await page.locator('#kb-allowance-bulk').selectOption('HUSBAND');await page.locator('#kb-allowance-apply').click();
+  assert.equal(await page.locator('[data-kb-allowance="15"]').inputValue(),'HUSBAND');
+  assert.equal(await page.locator('[data-kb-allowance="1"]').inputValue(),'');
+  await page.locator('[data-kb-allowance="0"]').selectOption('WIFE');
   await page.locator('#kb-review-filter').selectOption('other');
   assert.equal(await page.locator('#kb-preview-rows tbody tr:visible').count(),1);
   assert.match(await page.locator('#kb-preview-rows tbody tr:visible').innerText(),/이미 등록된 내역/);
   assert.equal(await page.locator('[data-kb-row]:checked').count(),2);
+  assert.equal(await page.locator('[data-kb-assigned="999"]').innerText(),'윱니');
+  await page.locator('[data-kb-existing="999"]').selectOption('HUSBAND');await page.locator('[data-kb-assign="999"]').click();
+  await page.waitForFunction(()=>document.querySelector('[data-kb-assigned="999"]').textContent==='동구');assert.deepEqual(links,[{ownerCode:'HUSBAND'}]);
   await page.locator('#kb-review-filter').selectOption('READY');
   await page.locator('#kb-select-all').check();assert.equal(await page.locator('[data-kb-row]:checked').count(),299);
   await page.screenshot({path:path.join(root,'build/ui-review/kb-import-review.png')});
@@ -68,6 +78,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
     await page.screenshot({path:path.join(root,`build/ui-review/kb-import-review-${width}.png`)});
   }
   fs.mkdirSync(path.join(root,'build/ui-review'),{recursive:true});
+  await page.setViewportSize({width:1440,height:1000});
+  await page.locator('#kb-select-all').uncheck();await page.locator('[data-kb-row="0"]').check();
+  await page.locator('#kb-category').selectOption('1');await page.locator('#kb-confirm-card').check();await page.locator('#kb-flow-next').click();
+  await page.locator('#question-dialog').waitFor();assert.match(await page.locator('#question-dialog').innerText(),/용돈 사용액/);
+  await page.locator('#question-dialog button[type=submit]').click();await page.locator('#kb-view-card').waitFor();
+  assert.equal(commits.length,1);assert.equal(commits[0].selections[0].allowanceOwner,'WIFE');
   await page.locator('#close-modal').click();await page.locator('#kb-import').click();await page.waitForFunction(()=>document.querySelector('#kb-flow-next')?.disabled===false);
   await page.screenshot({path:path.join(root,'build/ui-review/kb-import-mobile.png')});
   assert.deepEqual(errors,[]);console.log('PASS KB incremental mode, 300 receipts with lazy details/search/paging, progress, preview paging and selection persistence, mobile layouts');

@@ -1,5 +1,6 @@
 // Presentation and keyboard enhancements shared by every screen. No financial mutations.
 const pageDescriptions={
+  allowance:"전표와 직접 입력한 금액으로 각자의 용돈을 기록하세요.",
   review:"분류와 설정이 필요한 내역을 모아 하나씩 정리하세요.",
   dashboard:"우리 자산과 이번 달의 흐름을 한눈에 확인하세요.",
   assets:"자산과 부채를 모아 현재 구성을 살펴보세요.",
@@ -14,6 +15,7 @@ const pageDescriptions={
   settings:"연결 상태와 데이터 관리 방법을 확인하세요."
 };
 const navigationIcons={
+  allowance:'M3 6h18v14H3z M16 11h5v5h-5z M7 10v6 M4 13h6',
   review:'M5 3h14v18H5z M8 8l2 2 4-4 M8 15h8',
   dashboard:'M3 10 12 3l9 7v11h-6v-7H9v7H3Z',assets:'M3 4h7v7H3z M14 4h7v7h-7z M3 15h7v6H3z M14 15h7v6h-7z',
   cash:'M3 6h18v14H3z M3 6l14-3v3 M16 12h5v4h-5z',savings:'M4 20h16 M6 16v-4 M12 16V8 M18 16V4',

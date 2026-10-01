@@ -78,3 +78,12 @@ tasks.register('migrateKbCardImport', JavaExec) {
     workingDir = projectDir
     javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
 }
+
+tasks.register('migrateAllowance', JavaExec) {
+ description = 'Add separate allowance records and receipt links.'
+ group = 'application'
+ classpath = sourceSets.main.runtimeClasspath
+ mainClass = 'tools/ApplyAllowanceMigration.java'
+ workingDir = projectDir
+ javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+}

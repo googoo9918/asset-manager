@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 /** 화면 URL과 JSP를 명시적으로 연결한다. 각 화면의 JS는 해당 JSP에서만 로드한다. */
 @Controller
 public class PageController {
+  @GetMapping("/allowance") public String allowance(Model model){model.addAttribute("pageTitle","용돈");return "allowance";}
   @GetMapping("/")
   public String dashboard(Model model) {
     model.addAttribute("pageTitle", "대시보드");

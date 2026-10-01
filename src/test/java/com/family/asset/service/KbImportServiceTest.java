@@ -17,7 +17,8 @@ class KbImportServiceTest {
   final LedgerService ledger=mock(LedgerService.class);
   final OperationMapper ops=mock(OperationMapper.class);
   final KbImportMapper imports=mock(KbImportMapper.class);
-  final KbImportService service=new KbImportService(catalog,ledger,ops,imports);
+  final AllowanceService allowance=mock(AllowanceService.class);
+  final KbImportService service=new KbImportService(catalog,ledger,ops,imports,allowance);
   final Card card=new Card();
   @BeforeEach void setup() {
     card.setId(1L);card.setStatus(AssetStatus.ACTIVE);card.setCardType(CardType.CREDIT);card.setOwnerCode(OwnerCode.HUSBAND);
@@ -155,7 +156,7 @@ class KbImportServiceTest {
     when(imports.find(eq(1L),anyString())).thenAnswer(call->keys.get(call.getArgument(1)));
     doAnswer(call->{keys.put(call.getArgument(1),call.getArgument(2));return null;}).when(imports).insert(anyLong(),anyString(),anyLong());
     var realLedger=new LedgerService(entries,ops,catalog);
-    var importer=new KbImportService(catalog,realLedger,ops,imports);
+    var importer=new KbImportService(catalog,realLedger,ops,imports,allowance);
     var request=new KbImport.Preview(1L,List.of(pointRow()),"K015");
     var draft=importer.preview(request);
     // Point mappings always debit their asset, even if an old client sends affectBalance=false.
@@ -170,4 +171,18 @@ class KbImportServiceTest {
     verify(ops).changeBalance(6L,new BigDecimal("1000"));
     assertEquals("DUPLICATE",importer.preview(request).rows().getFirst().status());
   }
+
+ @Test void selectedAllowanceOwnerIsSavedWithImportedSourceOnlyOnce(){
+  var row=row("APPROVED","allowance","1000",1);var draft=service.preview(new KbImport.Preview(1L,List.of(row)));
+  var request=new KbImport.Commit(draft.previewId(),null,List.of(0),false,List.of(new KbImport.Selection(0,5L,false,"WIFE")),true);
+  service.commit(request);verify(allowance).assign(42L,"WIFE");
+  when(imports.find(1L,KbImportService.key(row))).thenReturn(42L);when(allowance.assigned(42L)).thenReturn("WIFE");
+  assertThrows(BusinessException.class,()->service.commit(request));verify(allowance,times(1)).assign(anyLong(),anyString());
+  var again=service.preview(new KbImport.Preview(1L,List.of(row)));assertEquals("WIFE",again.rows().getFirst().allowanceOwner());assertEquals(42L,again.rows().getFirst().sourceEntryId());
+ }
+ @Test void invalidAllowanceOwnerIsRejectedBeforeAnyWrite(){
+  var draft=service.preview(new KbImport.Preview(1L,List.of(row("APPROVED","allowance","1000",1))));
+  assertThrows(BusinessException.class,()->service.commit(new KbImport.Commit(draft.previewId(),null,List.of(0),false,List.of(new KbImport.Selection(0,5L,false,"JOINT")),true)));
+  verify(ledger,never()).create(any(),anyString(),anyBoolean());verify(allowance,never()).assign(any(),any());
+ }
 }

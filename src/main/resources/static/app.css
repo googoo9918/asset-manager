@@ -877,3 +877,5 @@ details > summary { cursor: pointer; padding: 12px 0; color: #625d50; font-size:
 .review-actions { display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:8px; flex:0 0 160px; }
 .review-actions a { padding:10px; text-align:center; border:1px solid var(--line); border-radius:8px; }
 @media(max-width:600px){.review-item,.review-overview{flex-direction:column;align-items:stretch;gap:12px}.review-actions{flex:initial;flex-direction:row;flex-wrap:wrap}.review-actions>*{flex:1}.review-types button{flex:1 1 130px;justify-content:space-between}}
+
+.allowance-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}.allowance-summary article{padding:20px;border:1px solid var(--line);border-radius:14px}.allowance-balance{display:block;font-size:1.8rem;margin-bottom:18px}

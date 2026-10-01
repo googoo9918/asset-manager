@@ -28,7 +28,9 @@ public final class KbImport {
       @Size(max=200) String sourceCard) {
     public Preview(Long cardId, List<Row> rows) { this(cardId, rows, null); }
   }
-  public record Selection(@Min(0) int index, @NotNull Long categoryId, boolean remember) {}
+  public record Selection(@Min(0) int index, @NotNull Long categoryId, boolean remember, @Pattern(regexp="HUSBAND|WIFE") String allowanceOwner) {
+    public Selection(int index,Long categoryId,boolean remember){this(index,categoryId,remember,null);}
+  }
   public record Commit(@NotBlank String previewId, Long categoryId,
       @NotEmpty @Size(max=500) List<@Min(0) Integer> indices,
       @NotNull Boolean affectBalance, @Size(max=500) List<@Valid Selection> selections,
@@ -39,6 +41,6 @@ public final class KbImport {
   }
   public record File(@NotBlank @Size(max=200) String name,
       @NotBlank @Size(max=7000000) String base64) {}
-  public record Checked(int index, Row row, String status, String reason, Long categoryId, String categoryReason) {}
+  public record Checked(int index, Row row, String status, String reason, Long categoryId, String categoryReason, Long sourceEntryId, String allowanceOwner) {}
   public record Result(String previewId, List<Checked> rows) {}
 }

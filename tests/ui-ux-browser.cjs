@@ -40,7 +40,7 @@ const output=path.join(root,'build','ui-review');
   const ready=()=>page.waitForFunction(()=>document.querySelector('#content')?.getAttribute('aria-busy')==='false');
   for(const width of [1440,390,320]) {
    await page.setViewportSize({width,height:960});
-   for(const name of ['dashboard','securities','transactions','planned','cards','snapshots','settings','assets','cash','savings','loans']) {
+   for(const name of ['dashboard','securities','transactions','planned','cards','snapshots','settings','assets','cash','savings','loans','allowance']) {
     await page.goto('http://asset.test/'+(name==='dashboard'?'':name));await ready();
     if(['dashboard','securities','transactions','planned'].includes(name))await page.screenshot({path:path.join(output,`${baseline?'before':'after'}-${name}-${width}.png`),fullPage:true});
     if(!baseline) {
@@ -152,6 +152,6 @@ const output=path.join(root,'build','ui-review');
   await page.waitForFunction(()=>document.querySelector('#modal-body').scrollTop>0);await page.mouse.up();
   assert.equal(await page.locator('#save-modal').isVisible(),true);await page.locator('#cancel-modal').click();
   assert.deepEqual(errors,[]);
-  console.log('PASS 11 screens at 1440/390/320px; menu, agenda, retry, keyboard scrolling, sticky order action, filters, duplicate-save protection and long-list drag scrolling');
+  console.log('PASS 12 screens at 1440/390/320px; menu, agenda, retry, keyboard scrolling, sticky order action, filters, duplicate-save protection and long-list drag scrolling');
  } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

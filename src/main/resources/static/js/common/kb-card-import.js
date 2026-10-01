@@ -327,18 +327,33 @@ function openKbImport() {
       <p>등록 가능한 내역 ${preview.rows.filter(x=>x.status==='READY').length}건. 중복·취소·확인이 필요한 내역은 등록에서 제외됩니다.</p>
       ${errors.length?`<details><summary>읽지 못한 행 ${errors.length}건 (저장 제외)</summary><p>${errors.map(esc).join('<br>')}</p></details>`:''}
       <div class="kb-review-toolbar"><label><input type="checkbox" id="kb-select-all">등록 가능한 내역 전체 선택</label><label>표시할 내역<select id="kb-review-filter"><option value="READY">등록 가능 ${preview.rows.filter(x=>x.status==='READY').length}건</option><option value="all">전체 ${preview.rows.length}건</option><option value="other">중복·확인 필요 ${preview.rows.filter(x=>x.status!=='READY').length}건</option></select></label></div>
-      <div id="kb-preview-rows">${table(['선택','이용일','가맹점 / 업종','원화 금액','결제','분류 / 근거','확인 결과'],preview.rows.map(x=>[
+      <div id="kb-preview-rows">${table(['선택','이용일','가맹점 / 업종','원화 금액','결제','분류 / 근거','용돈 반영','확인 결과'],preview.rows.map(x=>[
         x.status==='READY'?`<input type="checkbox" data-kb-row="${x.index}" aria-label="${esc(x.row.merchant)} 저장">`:'—',
         esc(x.row.date),esc(x.row.merchant)+`<div class="muted">${esc(x.row.industry||'전표 업종 없음')}</div>`,krw(x.row.amount),x.row.pointPayment?'포인트리':x.row.installmentMonths===1?'일시불':x.row.installmentMonths+'개월',
-        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',statusBadge(x.reason,x.status==='READY'?'success':'neutral')]),[0,2,3,5,6])}</div>
+        x.status==='READY'?`<select data-kb-category="${x.index}" aria-label="${esc(x.row.merchant)} 분류">${categoryOptions(x.categoryId)}</select><div class="muted">${esc(x.categoryReason||'분류를 선택해주세요.')}</div><label><input type="checkbox" data-kb-remember="${x.index}">다음부터 동일 가맹점·업종에 적용</label>`:'—',x.status==='READY'?`<select data-kb-allowance="${x.index}" aria-label="${esc(x.row.merchant)} 용돈 반영"><option value="">안 함</option><option value="HUSBAND">동구</option><option value="WIFE">윱니</option></select>`:x.sourceEntryId?`<span data-kb-assigned="${x.sourceEntryId}">${x.allowanceOwner?label('OwnerCode',x.allowanceOwner):'안 함'}</span> <select data-kb-existing="${x.sourceEntryId}" aria-label="${esc(x.row.merchant)} 용돈 연결 변경"><option value="">안 함</option><option value="HUSBAND" ${x.allowanceOwner==='HUSBAND'?'selected':''}>동구</option><option value="WIFE" ${x.allowanceOwner==='WIFE'?'selected':''}>윱니</option></select><button type="button" data-kb-assign="${x.sourceEntryId}">연결 저장</button>`:'—',statusBadge(x.reason,x.status==='READY'?'success':'neutral')]),[0,2,3,5,6,7])}</div>
       <div class="toolbar pagination"><button type="button" id="kb-preview-prev">이전</button><span id="kb-preview-page" role="status"></span><button type="button" id="kb-preview-next">다음</button></div>
       <label>등록 가능한 내역의 분류 일괄 변경 <select id="kb-category">${categoryOptions(null)}</select></label>
-      <details><summary>카테고리 추가</summary><label>추가할 위치 <select id="kb-new-parent"><option value="">새 대분류</option>${state.categories.filter(c=>c.active&&c.transactionType==='EXPENSE'&&!c.parentId).map(c=>`<option value="${c.id}">${esc(c.name)} 아래 중분류</option>`).join('')}</select></label><label>이름 <input id="kb-new-name" maxlength="80"></label><button type="button" id="kb-add-category">카테고리 추가</button></details>
+      <div class="toolbar"><label>선택한 전표의 용돈 반영 <select id="kb-allowance-bulk"><option value="">안 함</option><option value="HUSBAND">동구</option><option value="WIFE">윱니</option></select></label><button type="button" id="kb-allowance-apply">선택한 전표에 적용</button></div><p class="muted">용돈 반영은 기본 ‘안 함’입니다. 선택한 사람의 용돈에 이용일 기준 전체 구매액을 사용액으로 기록하며, 용돈 연결로 계좌 잔액을 추가 차감하지 않습니다.</p><details><summary>카테고리 추가</summary><label>추가할 위치 <select id="kb-new-parent"><option value="">새 대분류</option>${state.categories.filter(c=>c.active&&c.transactionType==='EXPENSE'&&!c.parentId).map(c=>`<option value="${c.id}">${esc(c.name)} 아래 중분류</option>`).join('')}</select></label><label>이름 <input id="kb-new-name" maxlength="80"></label><button type="button" id="kb-add-category">카테고리 추가</button></details>
       ${card.cardType==='DEBIT'?'<label>체크카드 연결계좌 잔액 <select id="kb-balance"><option value="">반영 방법 선택</option><option value="false">현재 잔액에 이미 반영됨 — 사용내역만 저장</option><option value="true">아직 반영되지 않음 — 사용액만큼 차감</option></select></label>':'<p class="muted">신용카드는 전체 구매액을 지출로 기록하며, 카드대금 출금은 기존 결제 처리에서 관리합니다.</p>'}
       <p id="kb-selection-summary" role="status"></p>
       <label><input type="checkbox" id="kb-confirm-card">카드·금액·분류와 잔액 반영 방법을 확인했습니다. (필수)</label>
       <p id="kb-save-message" class="error" role="alert" tabindex="-1"></p>
       <button type="button" id="kb-save" hidden>분류 확인 후 최종 등록</button>`;
+    $('#kb-allowance-apply').onclick=()=>{
+      const selected=$$('[data-kb-row]:checked');
+      if(!selected.length){$('#kb-save-message').textContent='먼저 적용할 전표를 선택해주세요.';return;}
+      selected.forEach(el=>$('[data-kb-allowance="'+el.dataset.kbRow+'"]').value=$('#kb-allowance-bulk').value);
+      $('#kb-save-message').textContent='';updateSelection();
+    };
+    $$('[data-kb-assign]').forEach(b=>b.onclick=act(async()=>{
+      const id=Number(b.dataset.kbAssign);
+      const owner=b.parentElement.querySelector('[data-kb-existing]').value||null;
+      await api('/allowance/source/'+id,'PUT',{ownerCode:owner});
+      preview.rows.filter(x=>x.sourceEntryId===id).forEach(x=>x.allowanceOwner=owner);
+      $$('[data-kb-assigned="'+id+'"]').forEach(el=>el.textContent=owner?label('OwnerCode',owner):'안 함');
+      $$('[data-kb-existing="'+id+'"]').forEach(el=>el.value=owner||'');
+      $('#kb-message').textContent='용돈 연결을 저장했습니다. 기존 거래는 다시 등록하지 않습니다.';
+    }));
     let previewPage=0;
     const drawPreviewPage=()=>{
       const rows=$$('#kb-preview-rows tbody tr'),filter=$('#kb-review-filter').value;
@@ -385,13 +400,14 @@ function openKbImport() {
       if(!indices.length) throw new Error('저장할 내역을 선택해주세요.');
       const balance=card.cardType==='DEBIT'?$('#kb-balance').value:'false';
       if(balance==='') throw new Error('체크카드 잔액 반영 방법을 선택해주세요.');
-      const selections=indices.map(index=>({index,categoryId:$(`[data-kb-category="${index}"]`).value,remember:$(`[data-kb-remember="${index}"]`).checked}));
+      const selections=indices.map(index=>({index,categoryId:$(`[data-kb-category="${index}"]`).value,remember:$(`[data-kb-remember="${index}"]`).checked,allowanceOwner:$(`[data-kb-allowance="${index}"]`).value||null}));
       if(selections.some(x=>!x.categoryId))throw new Error('선택한 거래마다 지출 분류를 선택해주세요.');
       const selectedRows=indices.map(index=>preview.rows.find(x=>x.index===index).row);
       const amount=sum(selectedRows.map(row=>row.amount));
       const unclassified=selections.filter(x=>state.categories.find(c=>eq(c.id,x.categoryId))?.name==='미분류').length;
+      const allowanceSummary=['HUSBAND','WIFE'].map(owner=>label('OwnerCode',owner)+' '+krw(sum(selections.filter(x=>x.allowanceOwner===owner).map(x=>preview.rows.find(r=>r.index===x.index).row.amount)))).join(' · ');
       const deduction=card.cardType==='DEBIT'&&balance==='true'?`${accName(card.accountId)}에서 ${krw(amount)} 차감`:'연결 자산 잔액 차감 없음';
-      if(!await uiConfirm(`${card.cardName}\n${indices.length}건 · ${krw(amount)} 등록 (미분류 ${unclassified}건)\n${deduction}\n가맹점·업종 규칙 ${selections.filter(x=>x.remember).length}건 저장\n확인하면 거래내역과 카드 사용내역에 등록합니다.`)){
+      if(!await uiConfirm(`${card.cardName}\n${indices.length}건 · ${krw(amount)} 등록 (미분류 ${unclassified}건)\n${deduction}\n용돈 사용액: ${allowanceSummary}\n가맹점·업종 규칙 ${selections.filter(x=>x.remember).length}건 저장\n확인하면 거래내역과 카드 사용내역에 등록합니다.`)){
         $('#kb-message').textContent='등록을 취소했습니다. 거래와 분류 규칙은 저장하지 않았습니다.';return;
       }
       const result=await api('/kb-card/commit','POST',{previewId:preview.previewId,indices,selections,confirmed:true,affectBalance:balance==='true'});

@@ -20,6 +20,7 @@ public class KbImportService {
   private final LedgerService ledger;
   private final OperationMapper operations;
   private final KbImportMapper imports;
+  private final AllowanceService allowance;
   private final Map<String, Draft> drafts = new ConcurrentHashMap<>();
   private record Draft(Long cardId, List<KbImport.Row> rows, Instant expires, KbImport.Mapping mapping) {}
 
@@ -70,6 +71,7 @@ public class KbImportService {
     for (int i=0;i<draft.rows().size();i++) {
       var row = draft.rows().get(i);
       String key = key(row), status = "READY", reason = "저장 가능";
+      Long sourceId=ready?imports.find(draft.cardId(),key):null;
       if (Boolean.TRUE.equals(row.pointPayment()) && (draft.mapping() == null || !draft.mapping().pointPayment() || row.installmentMonths() != 1)) {
         status = "REVIEW"; reason = "포인트리 결제용 카드와 차감할 포인트 자산을 먼저 연결해주세요.";
       } else if (draft.mapping() != null && draft.mapping().pointPayment() && !Boolean.TRUE.equals(row.pointPayment())) {
@@ -78,7 +80,7 @@ public class KbImportService {
         status = "REVIEW"; reason = "취소·환불·미확인 내역: 원거래 확인 후 거래 화면에서 처리해주세요.";
       } else if (row.approvalNumber() != null && cancelledApprovals.contains(row.approvalNumber().trim())) {
         status = "REVIEW"; reason = "같은 승인번호의 취소 내역이 포함되어 있습니다. 원거래를 확인해주세요.";
-      } else if (!seen.add(key) || (ready && imports.find(draft.cardId(), key) != null)) {
+      } else if (!seen.add(key) || sourceId != null) {
         status = "DUPLICATE"; reason = "이미 가져온 내역 또는 파일 안의 중복 내역";
       } else if (existing.stream().anyMatch(e -> Objects.equals(e.getCardId(), draft.cardId())
           && e.getTransactionType() == TransactionType.EXPENSE && !Boolean.TRUE.equals(e.getVoided())
@@ -87,7 +89,7 @@ public class KbImportService {
       }
       var suggestion=KbCategoryClassifier.suggest(row,categories,imports.categoryRule(
           KbCategoryClassifier.normalize(row.merchant()),KbCategoryClassifier.normalize(row.industry())));
-      rows.add(new KbImport.Checked(i, row, status, reason, suggestion.categoryId(), suggestion.reason()));
+      rows.add(new KbImport.Checked(i, row, status, reason, suggestion.categoryId(), suggestion.reason(), sourceId, sourceId==null?null:allowance.assigned(sourceId)));
     }
     return rows;
   }
@@ -119,6 +121,7 @@ public class KbImportService {
       check("READY".equals(checked.get(index).status()), "중복 또는 확인이 필요한 내역이 있습니다. 미리보기를 다시 확인해주세요.");
       check(card.getCardType() != CardType.DEBIT || checked.get(index).row().installmentMonths() == 1, "체크카드 할부 내역을 확인해주세요.");
       var selection=selections.get(index);
+      if(selection!=null&&selection.allowanceOwner()!=null)AllowanceService.owner(selection.allowanceOwner());
       Long category=selection==null?request.categoryId():selection.categoryId();
       check(category!=null,"각 거래의 지출 분류를 선택해주세요.");
       catalog.categoryFor(category, TransactionType.EXPENSE);
@@ -141,6 +144,8 @@ public class KbImportService {
       // Editable through the ordinary transaction UI. Source identities survive edits/cancellations separately.
       var saved = ledger.create(entry, "MANUAL", Boolean.TRUE.equals(row.pointPayment()) || request.affectBalance());
       imports.insert(card.getId(), key(row), saved.getId());
+      var selection=selections.get(index);
+      if(selection!=null&&selection.allowanceOwner()!=null)allowance.assign(saved.getId(),selection.allowanceOwner());
     }
     rules.forEach((rule,category)->imports.saveCategoryRule(rule.get(0),rule.get(1),category));
     return Map.of("imported", request.indices().size());

@@ -10,6 +10,7 @@ const entries=[{id:1,transactionDate:date,transactionType:'EXPENSE',amount:'1000
 const installment={id:1,cardId:1,remainingMonths:2,remainingAmount:'200000',firstPaymentDate:date,memo:'노트북 할부',active:true};
 const occurrence={id:1,cardId:1,accountId:1,sourceKey:'CARD:1',dueDate:date,title:'테스트 카드 결제',planType:'CARD_PAYMENT',attribution:'HUSBAND',amount:'100000',state:'PENDING'};
 function fixtures(url){const u=new URL(url,'http://test'),p=u.pathname;let account=u.searchParams.get('account');
+ if(p==='/api/allowance')return {items:[],summaries:[{ownerCode:'HUSBAND',opening:'0',added:'0',used:'0',balance:'0'},{ownerCode:'WIFE',opening:'0',added:'0',used:'0',balance:'0'}]};
  if(p==='/api/accounts')return aa;
  if(p==='/api/cards')return cc;
  if(p==='/api/installments')return [installment];

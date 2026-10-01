@@ -6,6 +6,7 @@ const ctx = document.body.dataset.context || "",
   path = location.pathname.slice(ctx.length) || "/",
   page = path.slice(1) || "dashboard";
 const names = {
+  allowance: "용돈",
   dashboard: "대시보드",
   assets: "전체 자산 요약",
   cash: "현금성 자산",

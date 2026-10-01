@@ -1,12 +1,12 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><c:out
-        value="${pageTitle}"/> · 윱니와 동구</title><link rel="stylesheet" href="<c:url value='/app.css'/>?v=20261001-review-1"></head>
+        value="${pageTitle}"/> · 윱니와 동구</title><link rel="stylesheet" href="<c:url value='/app.css'/>?v=20261001-allowance-1"></head>
 <body data-context="${pageContext.request.contextPath}">
 <a class="skip-link" href="#content">본문으로 건너뛰기</a>
 <aside id="sidebar"><div class="brand-row"><a class="brand" href="<c:url value='/'/>">윱니와 동구<span>우리의 자산 기록</span></a><button type="button" id="menu-toggle" aria-controls="main-nav" aria-expanded="false">메뉴 열기</button></div>
     <nav id="main-nav" aria-label="주 메뉴">
-        <a href="<c:url value='/'/>">대시보드</a><a href="<c:url value='/review'/>">확인할 내역</a><strong>자산</strong><a href="<c:url value='/assets'/>">전체 자산 요약</a><a
+        <a href="<c:url value='/'/>">대시보드</a><a href="<c:url value='/review'/>">확인할 내역</a><a href="<c:url value='/allowance'/>">용돈</a><strong>자산</strong><a href="<c:url value='/assets'/>">전체 자산 요약</a><a
             href="<c:url value='/cash'/>">현금성 자산</a><a href="<c:url value='/savings'/>">적금</a><a
             href="<c:url value='/securities'/>">증권</a><a href="<c:url value='/cards'/>">카드</a><strong>부채</strong><a
             href="<c:url value='/loans'/>">대출</a><strong>수입 / 지출</strong><a
