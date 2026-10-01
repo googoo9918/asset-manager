@@ -27,9 +27,9 @@
 <nav class="mobile-nav" aria-label="자주 쓰는 화면">
     <a href="<c:url value='/'/>">홈</a><a href="<c:url value='/transactions'/>">거래내역</a><a href="<c:url value='/securities'/>">증권</a><a href="<c:url value='/planned'/>">예정 거래</a>
 </nav>
-<script src="<c:url value='/js/common/core.js'/>"></script>
+<script src="<c:url value='/js/common/core.js'/>?v=20261001-review-1"></script>
 <script src="<c:url value='/js/common/dialogs.js'/>"></script>
 <script src="<c:url value='/js/common/charts.js'/>"></script>
 <script src="<c:url value='/js/common/order.js'/>"></script>
 <script src="<c:url value='/js/common/occurrence-editor.js'/>"></script>
-<script src="<c:url value='/js/common/ui.js'/>"></script>
+<script src="<c:url value='/js/common/ui.js'/>?v=20261001-review-1"></script>

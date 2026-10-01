@@ -5,6 +5,9 @@ import java.util.*;
 import org.apache.ibatis.annotations.Param;
 
 public interface OperationMapper {
+  int categoryChange(@org.apache.ibatis.annotations.Param("entryId") Long entryId,
+      @org.apache.ibatis.annotations.Param("oldCategoryId") Long oldCategoryId,
+      @org.apache.ibatis.annotations.Param("newCategoryId") Long newCategoryId);
   Long lock();
 
   int changeBalance(@Param("id") Long id, @Param("delta") BigDecimal delta);

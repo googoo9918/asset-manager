@@ -7,4 +7,5 @@
  INSERT INTO ledger_entry (transaction_date, transaction_type, amount, attribution, category_id, payment_method, source_account_id, target_account_id, card_id, installment_months, memo, origin, voided, replaces_id) VALUES (#{transactionDate}, #{transactionType}, #{amount}, #{attribution}, #{categoryId}, #{paymentMethod}, #{sourceAccountId}, #{targetAccountId}, #{cardId}, #{installmentMonths}, #{memo}, #{origin}, #{voided}, #{replacesId})
  </insert>
  <update id="update" parameterType="com.family.asset.dto.Entry">UPDATE ledger_entry SET transaction_date=#{transactionDate}, transaction_type=#{transactionType}, amount=#{amount}, attribution=#{attribution}, category_id=#{categoryId}, payment_method=#{paymentMethod}, source_account_id=#{sourceAccountId}, target_account_id=#{targetAccountId}, card_id=#{cardId}, installment_months=#{installmentMonths}, memo=#{memo}, origin=#{origin}, voided=#{voided}, replaces_id=#{replacesId}, updated_at=now() WHERE id=#{id}</update>
+ <update id="updateCategory">UPDATE ledger_entry SET category_id=#{categoryId}, updated_at=now() WHERE id=#{id} AND voided=false</update>
 </mapper>

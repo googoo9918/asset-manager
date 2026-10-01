@@ -17,6 +17,7 @@ const names = {
   planned: "예정 거래",
   snapshots: "자산 스냅샷",
   settings: "설정",
+  review: "확인할 내역",
 };
 const state = {
   meta: {},

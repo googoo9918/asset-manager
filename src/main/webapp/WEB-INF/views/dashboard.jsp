@@ -3,6 +3,7 @@
 <%@ include file="common/header.jspf" %>
 <template id="page-template">
     <div id="dashboard-metrics"></div>
+    <section class="panel review-overview"><div><h2>확인할 내역</h2><p id="dashboard-review" role="status">확인이 필요한 항목을 살펴보고 있습니다.</p></div><a href="<c:url value='/review'/>">내역 확인 →</a></section>
     <div class="quick-links" aria-label="자주 쓰는 화면">
         <a href="<c:url value='/transactions'/>">수입·지출 기록</a><a href="<c:url value='/planned'/>">예정 출금 확인</a><a href="<c:url value='/securities'/>">보유 종목 확인</a><a href="<c:url value='/snapshots'/>">자산 변동 비교</a>
     </div>
@@ -21,6 +22,6 @@
     </section>
 </template>
 <%@ include file="common/footer.jspf" %>
-<script src="<c:url value='/js/pages/dashboard.js'/>"></script>
+<script src="<c:url value='/js/pages/dashboard.js'/>?v=20261001-review-1"></script>
 <script src="<c:url value='/js/common/events.js'/>"></script>
 </body></html>

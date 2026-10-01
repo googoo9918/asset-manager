@@ -11,4 +11,6 @@ public interface EntryMapper {
   int insert(Entry value);
 
   int update(Entry value);
+  int updateCategory(@org.apache.ibatis.annotations.Param("id") Long id,
+      @org.apache.ibatis.annotations.Param("categoryId") Long categoryId);
 }

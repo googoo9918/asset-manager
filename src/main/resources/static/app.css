@@ -866,3 +866,14 @@ details > summary { cursor: pointer; padding: 12px 0; color: #625d50; font-size:
 #card-billing .billing-card { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
 #card-billing .billing-card > summary { font-weight: 700; cursor: pointer; line-height: 1.6; }
 #card-billing .billing-card .toolbar { margin-top: 16px; }
+.review-overview { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.review-overview p { margin-bottom:0; }.review-overview a { white-space:nowrap; }
+.review-types { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
+.review-types button { display:flex; align-items:center; gap:12px; }
+.review-types button[aria-pressed="true"] { background:var(--accent-soft); border-color:#c8a32a; }
+.review-types strong { font-variant-numeric:tabular-nums; }
+.review-item { display:flex; justify-content:space-between; gap:24px; padding:20px 0; border-bottom:1px solid var(--line); }
+.review-item > div:first-child { min-width:0; }.review-item h3 { overflow-wrap:anywhere; margin:10px 0 8px; }.review-item p { margin:0 0 8px; }
+.review-actions { display:flex; flex-direction:column; justify-content:center; align-items:stretch; gap:8px; flex:0 0 160px; }
+.review-actions a { padding:10px; text-align:center; border:1px solid var(--line); border-radius:8px; }
+@media(max-width:600px){.review-item,.review-overview{flex-direction:column;align-items:stretch;gap:12px}.review-actions{flex:initial;flex-direction:row;flex-wrap:wrap}.review-actions>*{flex:1}.review-types button{flex:1 1 130px;justify-content:space-between}}

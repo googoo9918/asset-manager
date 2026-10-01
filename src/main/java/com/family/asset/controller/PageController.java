@@ -73,4 +73,10 @@ public class PageController {
     return "settings";
   }
 
+  @GetMapping("/review")
+  public String review(Model model) {
+    model.addAttribute("pageTitle", "확인할 내역");
+    return "review";
+  }
+
 }

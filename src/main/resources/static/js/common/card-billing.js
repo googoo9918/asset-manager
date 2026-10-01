@@ -2,7 +2,8 @@
 function bindCardBilling() {
   const month=$('#billing-month'),status=$('#billing-status'),cards=$('#billing-cards'),accounts=$('#billing-accounts');
   if(!month)return;
-  month.value=preference('card-billing-month',monthNow());
+  const requestedMonth=new URLSearchParams(location.search).get('billingMonth');
+  month.value=requestedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)?requestedMonth:preference('card-billing-month',monthNow());
   let request=0;
   const load=async()=>{
     if(!month.value)return;

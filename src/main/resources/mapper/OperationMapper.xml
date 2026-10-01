@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.family.asset.mapper.OperationMapper">
+ <insert id="categoryChange">INSERT INTO entry_category_change(entry_id,old_category_id,new_category_id) VALUES(#{entryId},#{oldCategoryId},#{newCategoryId})</insert>
  <select id="lock" resultType="long">SELECT 1 FROM pg_advisory_xact_lock(7421901)</select>
  <update id="changeBalance">UPDATE asset_account SET current_balance_krw=current_balance_krw+#{delta}, deposit_krw=CASE WHEN asset_type='SECURITIES' THEN deposit_krw+#{delta} ELSE deposit_krw END,updated_at=now() WHERE id=#{id}</update>
  <insert id="effect">INSERT INTO entry_effect(entry_id,account_id,delta) VALUES(#{entryId},#{accountId},#{delta})</insert>

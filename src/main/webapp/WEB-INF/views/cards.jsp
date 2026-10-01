@@ -36,7 +36,7 @@
 </template>
 <%@ include file="common/footer.jspf" %>
 <script src="<c:url value='/js/common/card-editor.js'/>?v=20260930-billing-1"></script>
-<script src="<c:url value='/js/common/card-billing.js'/>?v=20260930-billing-1"></script>
+<script src="<c:url value='/js/common/card-billing.js'/>?v=20261001-review-1"></script>
 <script src="<c:url value='/js/common/entry-editor.js'/>"></script>
 <script src="<c:url value='/js/common/kb-card-import.js'/>"></script>
 <script src="<c:url value='/js/pages/cards.js'/>?v=20260930-billing-1"></script>
