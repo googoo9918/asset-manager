@@ -41,5 +41,5 @@
 <script src="<c:url value='/js/common/kb-card-import.js'/>?v=20261001-allowance-1"></script>
 <script src="<c:url value='/js/pages/cards.js'/>?v=20260930-billing-1"></script>
 <script src="<c:url value='/js/common/kb-benefits.js'/>"></script>
-<script src="<c:url value='/js/common/events.js'/>"></script>
+<script src="<c:url value='/js/common/events.js'/>?v=20261002-allowance-link-1"></script>
 </body></html>

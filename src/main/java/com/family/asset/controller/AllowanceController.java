@@ -11,6 +11,7 @@ public class AllowanceController {
  @PostMapping public Object create(@RequestBody AllowanceRecord row){return service.manual(null,row);}
  @PutMapping("/{id}") public Object update(@PathVariable Long id,@RequestBody AllowanceRecord row){return service.manual(id,row);}
  public record Assignment(String ownerCode){}
+ @GetMapping("/source/{id}") public Object assignment(@PathVariable Long id){return service.assignment(id);}
  @PutMapping("/source/{id}") public void assign(@PathVariable Long id,@RequestBody Assignment value){service.assign(id,value.ownerCode());}
  @DeleteMapping("/{id}") public void remove(@PathVariable Long id){service.remove(id);}
 }

@@ -57,12 +57,19 @@ public class AllowanceService {
   }else{var old=require(records.find(id),"용돈 내역");check(old.getSourceEntryId()==null&&Boolean.TRUE.equals(old.getActive()),"직접 입력한 내역만 수정할 수 있습니다.");value.setId(id);check(records.update(value)==1,"내역이 변경되었습니다. 다시 조회해주세요.");}
   return records.find(value.getId());
  }
+ private Long root(Long id){
+  var entry=require(entries.findById(id),"거래");var seen=new HashSet<Long>();
+  while(entry.getReplacesId()!=null){check(seen.add(entry.getId()),"원거래 연결을 확인해주세요.");entry=require(entries.findById(entry.getReplacesId()),"원거래");}
+  return entry.getId();
+ }
+ public record Assignment(Long sourceEntryId,String ownerCode,boolean eligible) {}
+ public Assignment assignment(Long id){var sourceId=root(id);var latest=current(entries.findById(sourceId),replacements(entries.findAll()));return new Assignment(sourceId,assigned(sourceId),valid(latest)&&"MANUAL".equals(latest.getOrigin()));}
  @Transactional public void assign(Long sourceId,String owner){
-  operations.lock();check(records.imported(sourceId),"가져온 카드 전표만 연결할 수 있습니다.");
+  operations.lock();sourceId=root(sourceId);
   var existing=records.source(sourceId);
   if(owner==null||owner.isBlank()){if(existing!=null)records.remove(existing.getId());return;}
   owner(owner);var all=entries.findAll();var source=entries.findById(sourceId);var latest=current(source,replacements(all));
-  check(valid(latest),"취소되었거나 지출이 아닌 원거래는 연결할 수 없습니다.");
+  check(valid(latest)&&"MANUAL".equals(latest.getOrigin()),"취소되지 않은 일반 지출 거래만 용돈에 연결할 수 있습니다.");
   var value=new AllowanceRecord();value.setOwnerCode(owner);value.setSourceEntryId(sourceId);value.setRecordDate(latest.getTransactionDate());value.setAmount(latest.getAmount().negate());var memo=Objects.requireNonNullElse(latest.getMemo(),"카드 사용");value.setMemo(memo.substring(0,Math.min(300,memo.length())));records.link(value);
  }
  public String assigned(Long sourceId){var r=records.source(sourceId);return r!=null&&Boolean.TRUE.equals(r.getActive())?r.getOwnerCode():null;}

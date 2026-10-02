@@ -346,6 +346,7 @@ function entryTable(rows, manage = false) {
       ...(manage
         ? [
             action("entry-detail", e.id, "상세") +
+              (!e.voided && e.origin === "MANUAL" && e.transactionType === "EXPENSE" ? action("entry-allowance",e.id,"용돈 연결") : "") +
               (!e.voided && e.origin === "MANUAL"
                 ? action("entry-edit", e.id, "수정") +
                   action("entry-cancel", e.id, "취소")

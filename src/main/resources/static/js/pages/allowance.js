@@ -16,13 +16,13 @@ async function renderPage(){
   const pages=Math.max(1,Math.ceil(rows.length/15));index=Math.min(index,pages-1);
   $('#allowance-status').textContent=rows.length+'건 · '+month.value+' 이용일 기준';
   $('#allowance-list').innerHTML=rows.length?table(['날짜','사용자','내용','금액','관리'],rows.slice(index*15,index*15+15).map(r=>[
-   esc(r.date),label('OwnerCode',r.ownerCode),esc(r.memo||'용돈 기록')+'<div class="muted">'+(r.sourceEntryId?'카드 전표 연결':'직접 입력')+(r.sourceCancelled?' · 원거래 취소 / 합산 제외':'')+'</div>',r.sourceCancelled?'—':(decimal(r.amount)>0n?'+':'')+krw(r.amount),
+   esc(r.date),label('OwnerCode',r.ownerCode),esc(r.memo||'용돈 기록')+'<div class="muted">'+(r.sourceEntryId?'거래 연결':'직접 입력')+(r.sourceCancelled?' · 원거래 취소 / 합산 제외':'')+'</div>',r.sourceCancelled?'—':(decimal(r.amount)>0n?'+':'')+krw(r.amount),
    (r.sourceEntryId?(!r.sourceCancelled?'<button type="button" data-allowance-person="'+r.id+'">사람 변경</button>':'')+(r.currentEntryId?action('entry-detail',r.currentEntryId,'원거래'):''):'<button type="button" data-allowance-edit="'+r.id+'">수정</button>')+'<button type="button" data-allowance-remove="'+r.id+'">'+(r.sourceEntryId?'연결 해제':'삭제')+'</button>'
   ]),[0,1,2,3,4]):emptyState('표시할 용돈 내역이 없습니다.','금액을 직접 추가하거나 카드 전표 저장 시 용돈에 연결하세요.');
   $('#allowance-page').textContent=(index+1)+' / '+pages+' 페이지';$('#allowance-prev').disabled=index===0;$('#allowance-next').disabled=index===pages-1;
   $$('[data-allowance-edit]').forEach(b=>b.onclick=()=>{const row=items.find(r=>r.id===Number(b.dataset.allowanceEdit));edit(row,decimal(row.amount)>0n?'+':'-');});
   $$('[data-allowance-person]').forEach(b=>b.onclick=()=>{const row=items.find(r=>r.id===Number(b.dataset.allowancePerson));modal('용돈 사용자 변경',select('ownerCode','용돈에 반영할 사람',people(row.ownerCode)),()=>api('/allowance/source/'+row.sourceEntryId,'PUT',{ownerCode:$('[name=ownerCode]').value}));});
-  $$('[data-allowance-remove]').forEach(b=>b.onclick=run(async()=>{const row=items.find(r=>r.id===Number(b.dataset.allowanceRemove));if(!await uiConfirm(row.sourceEntryId?'용돈 연결을 해제할까요? 기존 카드 거래는 유지됩니다.':'이 용돈 기록을 삭제할까요?'))return;await api('/allowance/'+row.id,'DELETE');await load();}));
+  $$('[data-allowance-remove]').forEach(b=>b.onclick=run(async()=>{const row=items.find(r=>r.id===Number(b.dataset.allowanceRemove));if(!await uiConfirm(row.sourceEntryId?'용돈 연결을 해제할까요? 기존 거래는 유지됩니다.':'이 용돈 기록을 삭제할까요?'))return;await api('/allowance/'+row.id,'DELETE');await load();}));
  }
  async function load(){
   if(!month.value||!month.checkValidity())return;

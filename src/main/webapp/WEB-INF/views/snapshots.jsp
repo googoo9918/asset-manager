@@ -20,5 +20,5 @@
 </template>
 <%@ include file="common/footer.jspf" %>
 <script src="<c:url value='/js/pages/snapshots.js'/>"></script>
-<script src="<c:url value='/js/common/events.js'/>"></script>
+<script src="<c:url value='/js/common/events.js'/>?v=20261002-allowance-link-1"></script>
 </body></html>

@@ -34,6 +34,15 @@ document.addEventListener(
         return editLoan(state.loans.find((l) => eq(l.id, id)));
       case "loan-close":
         return remove("/loans/" + id, "상환이 끝난 대출을 종료하시겠습니까?");
+      case "entry-allowance": {
+        const [entry,linked]=await Promise.all([api('/transactions/'+id),api('/allowance/source/'+id)]);
+        if(!linked.eligible)throw new Error('취소되지 않은 일반 지출 거래만 용돈에 연결할 수 있습니다.');
+        modal('용돈 연결',detailGrid({날짜:entry.transactionDate,금액:krw(entry.amount),메모:entry.memo})+
+          '<p class="muted">이 거래의 전체 금액을 선택한 사람의 용돈 사용액에 반영합니다. 기존 거래의 귀속·분류·계좌 잔액은 그대로 유지합니다.</p>'+
+          select('allowanceOwner','용돈에 반영할 사람',[['','안 함 · 연결 해제'],['HUSBAND','동구'],['WIFE','윱니']].map(([value,name])=>'<option value="'+value+'" '+((linked.ownerCode||'')===value?'selected':'')+'>'+name+'</option>').join('')),
+          ()=>api('/allowance/source/'+id,'PUT',{ownerCode:$('[name=allowanceOwner]').value||null}));
+        return;
+      }
       case "entry-edit": {
         const x = await api("/transactions/" + id);
         return editEntries(x.transactionType, x);

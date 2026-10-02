@@ -29,5 +29,5 @@
 <script src="<c:url value='/js/common/card-editor.js'/>?v=20261001-period-2"></script>
 <script src="<c:url value='/js/common/loan-editor.js'/>"></script>
 <script src="<c:url value='/js/pages/planned.js'/>"></script>
-<script src="<c:url value='/js/common/events.js'/>"></script>
+<script src="<c:url value='/js/common/events.js'/>?v=20261002-allowance-link-1"></script>
 </body></html>
