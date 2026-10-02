@@ -3,10 +3,10 @@ async function snapshots() {
   const rows = await api("/snapshots?owner=" + state.owner);
   pageTemplate();
   $("#trend-controls").innerHTML=trendControls();
-  const options=rows.map(r=>`<option value="${r.id}">${esc(new Date(r.captured_at).toLocaleString("ko-KR"))} (#${r.id})</option>`).join("");
+  const options=rows.map(r=>`<option value="${r.id}">${esc(snapshotTime(r.captured_at))} (#${r.id})</option>`).join("");
   $("#snap-before").innerHTML=options; $("#snap-after").innerHTML=options;
   if(rows.length) $("#snap-after").value=rows.at(-1).id;
-  $("#snapshot-list").innerHTML=table(["저장 시각","총자산","총부채","순자산","갱신 결과","상세"],[...rows].reverse().map(r=>[esc(new Date(r.captured_at).toLocaleString("ko-KR")),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),esc(r.sync_status),action("snapshot-detail",r.id,"상세")]));
+  $("#snapshot-list").innerHTML=table(["저장 시각","총자산","총부채","순자산","갱신 결과","상세"],[...rows].reverse().map(r=>[esc(snapshotTime(r.captured_at)),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),esc(r.sync_status),action("snapshot-detail",r.id,"상세")]));
   $("#compare").onclick = run(async () => {
     if (!rows.length) return;
     const owner = state.owner, container = $("#comparison");

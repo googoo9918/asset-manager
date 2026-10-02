@@ -2,7 +2,11 @@
 function trendControls() {
   return `<div class="toolbar"><select id="trend-period" aria-label="조회 기간"><option value="1">1개월</option><option value="3" selected>3개월</option><option value="6">6개월</option><option value="12">1년</option><option value="all">전체</option><option value="custom">직접 지정</option></select><input type="date" id="trend-from" aria-label="추이 시작일"><input type="date" id="trend-to" aria-label="추이 종료일" value="${today()}"><select id="trend-metric" aria-label="추이 지표"><option value="net_assets">순자산</option><option value="total_assets">총자산</option><option value="total_debts">총부채</option><option value="CASH">현금성 자산</option><option value="SAVINGS">적금</option><option value="SECURITIES">증권</option></select><button id="trend-go">조회</button></div>`;
 }
-// 소유자에 맞는 증권 스냅샷 상세를 합산한다. 일중 여러 번 저장한 경우 마지막 시점을 사용한다.
+function snapshotTime(value) {
+  return new Intl.DateTimeFormat("sv-SE", {timeZone:"Asia/Seoul", year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"}).format(new Date(value));
+}
+// 소유자에 맞는 스냅샷 상세를 합산하고 모든 저장 시점을 표시한다.
 // 차트 좌표의 Number 변환은 그림에만 사용하고 표/합계에는 decimal 기반 금액을 유지한다.
 async function bindTrend() {
   const owner = state.owner;
@@ -24,21 +28,11 @@ async function bindTrend() {
       $("#trend-from").value = from;
     }
     if(from&&to&&from>to)throw new Error("추이 시작일은 종료일보다 늦을 수 없습니다.");
-    const latest = new Map();
-    rows.forEach((r) => {
-      const d = new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "Asia/Seoul",
-      }).format(new Date(r.captured_at));
-      {
-        const previous = latest.get(d);
-        if (!previous || new Date(r.captured_at) > new Date(previous.captured_at) ||
-            (r.captured_at === previous.captured_at && Number(r.id) > Number(previous.id))) latest.set(d, r);
-      }
-    });
-    const daily = [...latest].sort(([a], [b]) => a.localeCompare(b));
-    const values = daily.filter(([d]) => (!from || d >= from) && (!to || d <= to));
-    // Keep the preceding recorded day even when it falls outside the displayed range.
-    const predecessors = new Map(daily.map(([, r], i) => [String(r.id), daily[i - 1]]));
+    const history = [...rows].sort((a, b) => new Date(a.captured_at) - new Date(b.captured_at) || Number(a.id) - Number(b.id))
+      .map(r => [snapshotTime(r.captured_at), r]);
+    const values = history.filter(([time]) => (!from || time.slice(0, 10) >= from) && (!to || time.slice(0, 10) <= to));
+    // 조회 범위 밖이어도 바로 이전 저장 기록을 비교 기준으로 유지한다.
+    const predecessors = new Map(history.map(([, r], i) => [String(r.id), history[i - 1]]));
     const metric = $("#trend-metric").value;
     let points;
     if (["CASH", "SAVINGS", "SECURITIES"].includes(metric)) {
@@ -69,9 +63,9 @@ async function bindTrend() {
     if (version !== requestVersion || $("#trend") !== container || owner !== state.owner) return;
     $("#trend").innerHTML =
       lineChart(points) +
-      '<p class="muted">날짜별 마지막 저장 기록을 비교합니다. 증감액을 누르면 변동 내역을 볼 수 있습니다. 기록이 없는 날은 직전 기록과 비교합니다.</p>' +
+      '<p class="muted">갱신할 때마다 저장된 기록을 시간순으로 표시합니다 (한국 시간). 증감액을 누르면 바로 이전 저장 기록과의 변동 내역을 볼 수 있습니다.</p>' +
       table(
-        ["날짜", "금액 (원)", ...(metric==="SECURITIES"?["USD (당시 환율 환산)"]:[]), "이전 기록 대비", "비교 기준일"],
+        ["저장 시각", "금액 (원)", ...(metric==="SECURITIES"?["USD (당시 환율 환산)"]:[]), "이전 기록 대비", "비교 기준 시각"],
         points.map((p, i) => {
           const previous = predecessors.get(String(values[i][1].id));
           return [p.date, krw(p.value), ...(metric==="SECURITIES"?[p.dollars===null?"환율 미확인":"USD $"+usdFormat(p.dollars)]:[]),
@@ -204,7 +198,7 @@ function lineChart(points, title = "자산 추이") {
     const left=i===0?50:(xy[i-1][0]+x)/2, right=i===xy.length-1?880:(x+xy[i+1][0])/2;
     return `<rect x="${left}" y="20" width="${Math.max(1,right-left)}" height="180" fill="transparent" ${tipAttrs(points[i].date,points[i].value,points[i].extra||title)} aria-label="${esc(points[i].date+" "+krw(points[i].value))}"/>`;
   }).join("");
-  return `<div class="chart-scroll"><svg class="chart" viewBox="0 0 930 235" role="img" aria-label="${esc(title)}"><path d="M65 25V185H885" fill="none" stroke="#DAD2B7"/><polyline points="${xy.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#B18512" stroke-width="3"/>${xy.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#B18512"/>`).join("")}<text x="65" y="218">${esc(points[0].date)}</text><text x="780" y="218">${esc(points.at(-1).date)}</text><text x="65" y="16">${esc(title)} · 최고 ${krw(points[values.indexOf(max)].value)}</text>${hits}</svg></div>`;
+  return `<div class="chart-scroll"><svg class="chart" viewBox="0 0 930 235" role="img" aria-label="${esc(title)}"><path d="M65 25V185H885" fill="none" stroke="#DAD2B7"/><polyline points="${xy.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#B18512" stroke-width="3"/>${xy.map(([x,y])=>`<circle cx="${x}" cy="${y}" r="4" fill="#B18512"/>`).join("")}<text x="65" y="218">${esc(points[0].date)}</text><text x="880" y="218" text-anchor="end">${esc(points.at(-1).date)}</text><text x="65" y="16">${esc(title)} · 최고 ${krw(points[values.indexOf(max)].value)}</text>${hits}</svg></div>`;
 }
 /** 거래일별 실제 기록만 합산한다. 자산이체, 카드대금 출금, 취소거래는 수입/지출 그래프에서 제외한다. */
 function transactionPoints(rows, type, from, to) {

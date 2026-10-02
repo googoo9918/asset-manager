@@ -4,7 +4,7 @@
 <template id="page-template">
     <section class="panel"><h2>자산 스냅샷 추이</h2>
         <div id="trend-controls"></div>
-        <p class="muted">저장된 스냅샷 기준 · 각 지점에 마우스를 올리거나 키보드로 선택하면 날짜와 금액을 볼 수 있습니다.</p>
+        <p class="muted">저장된 스냅샷 기준 · 각 지점에 마우스를 올리거나 키보드로 선택하면 저장 날짜·시간과 금액을 볼 수 있습니다.</p>
         <div id="trend"></div>
     </section>
     <section class="panel"><h2>시점 비교</h2>

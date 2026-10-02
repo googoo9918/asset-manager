@@ -8,7 +8,7 @@ const loan=amount=>({...account(1,amount),item_type:'LOAN',details:'{"loanName":
 const position=amount=>({...account(20,amount,'SECURITIES'),item_type:'POSITION',details:JSON.stringify({accountId:2,symbol:'TEST',name:'테스트 종목',currencyCode:'USD',quantity:'10',currentPrice:'100',exchangeRate:'1300'})});
 const data={
   1:[account(1,'1000000'),account(2,'2000000','SECURITIES'),loan('500000'),position('1900000'),account(3,'100000','CASH','WIFE')],
-  2:[account(1,'99999999')],
+  2:[account(1,'1200000'),account(2,'2000000','SECURITIES'),loan('500000'),position('1900000'),account(3,'100000','CASH','WIFE')],
   3:[account(1,'1500000'),account(2,'2300000','SECURITIES'),loan('300000'),position('2100000'),account(3,'100000','CASH','WIFE')]
 };
 const snapshots=[{id:1,captured_at:date(-2)+'T23:00:00+09:00'},{id:2,captured_at:date(0)+'T06:00:00+09:00'},{id:3,captured_at:date(0)+'T07:00:00+09:00'}];
@@ -35,10 +35,14 @@ const snapshots=[{id:1,captured_at:date(-2)+'T23:00:00+09:00'},{id:2,captured_at
       return route.fulfill({contentType:'text/html',body:html});
     });
     await page.goto('http://asset.test/');await page.waitForSelector('#content[aria-busy="false"]');
-    assert.equal(await page.locator('[data-trend-change]').count(),1);
-    assert.match(await page.locator('[data-trend-change]').innerText(),/\+1,000,000원/);
-    await page.locator('[data-trend-change]').click();await page.waitForSelector('#modal[open]');
-    assert.match(await page.locator('#modal-body').innerText(),/항목별 반영액 합계: \+1,000,000원/);
+    assert.equal(await page.locator('[data-trend-change]').count(),2);
+    assert.equal(await page.locator('#trend circle').count(),3);
+    assert.match(await page.locator('#trend').innerText(), /06:00:00/);
+    assert.match(await page.locator('#trend').innerText(), /07:00:00/);
+    assert.match(await page.locator('[data-trend-change]').first().innerText(), /\+200,000원/);
+    assert.match(await page.locator('[data-trend-change]').last().innerText(),/\+800,000원/);
+    await page.locator('[data-trend-change]').last().click();await page.waitForSelector('#modal[open]');
+    assert.match(await page.locator('#modal-body').innerText(),/항목별 반영액 합계: \+800,000원/);
     assert.match(await page.locator('#modal-body').innerText(),/주택 대출/);
     await page.locator('#modal-body summary').click();
     assert.match(await page.locator('#modal-body').innerText(),/테스트 종목/);
@@ -46,24 +50,24 @@ const snapshots=[{id:1,captured_at:date(-2)+'T23:00:00+09:00'},{id:2,captured_at
     await page.locator('#close-modal').click();
     await page.selectOption('#trend-period','custom');
     await page.fill('#trend-from',date(0));await page.locator('#trend-go').click();
-    await page.waitForFunction(()=>document.querySelectorAll('#trend tbody tr').length===1);
+    await page.waitForFunction(()=>document.querySelectorAll('#trend tbody tr').length===2);
     assert.match(await page.locator('#trend').innerText(),new RegExp(date(-2)));
-    assert.match(await page.locator('[data-trend-change]').innerText(),/\+1,000,000원/);
+    assert.match(await page.locator('[data-trend-change]').last().innerText(),/\+800,000원/);
     await page.selectOption('#trend-metric','total_debts');
-    await page.waitForFunction(()=>document.querySelector('[data-trend-change]')?.textContent.includes('-200,000원'));
-    await page.locator('[data-trend-change]').focus();await page.keyboard.press('Enter');await page.waitForSelector('#modal[open]');
+    await page.waitForFunction(()=>document.querySelector('[data-trend-change="1"]')?.textContent.includes('-200,000원'));
+    await page.locator('[data-trend-change]').last().focus();await page.keyboard.press('Enter');await page.waitForSelector('#modal[open]');
     assert.match(await page.locator('#modal-body').innerText(),/항목별 반영액 합계: -200,000원/);
     await page.locator('#close-modal').click();
     await page.locator('[data-owner=WIFE]').click();await page.waitForSelector('#content[aria-busy="false"]');
-    await page.locator('[data-trend-change]').click();await page.waitForSelector('#modal[open]');
+    await page.locator('[data-trend-change]').last().click();await page.waitForSelector('#modal[open]');
     assert.match(await page.locator('#modal-body').innerText(),/이 기간에 금액 변동이 없습니다/);
     assert.doesNotMatch(await page.locator('#modal-body').innerText(),/주택 대출|투자 계좌/);
     await page.locator('#close-modal').click();
     await page.locator('[data-owner=JOINT]').click();await page.waitForSelector('#content[aria-busy="false"]');
     await page.selectOption('#trend-metric','SECURITIES');
-    await page.waitForFunction(()=>document.querySelector('[data-trend-change]')?.textContent.includes('+300,000원'));
+    await page.waitForFunction(()=>[...document.querySelectorAll('[data-trend-change]')].at(-1)?.textContent.includes('+300,000원'));
     await page.setViewportSize({width:390,height:844});
-    await page.locator('[data-trend-change]').click();await page.waitForSelector('#modal[open]');
+    await page.locator('[data-trend-change]').last().click();await page.waitForSelector('#modal[open]');
     assert.match(await page.locator('#modal-body').innerText(),/항목별 반영액 합계: \+300,000원/);
     await page.locator('#modal-body summary').click();
     fs.mkdirSync(path.join(root,'build'),{recursive:true});
@@ -72,6 +76,6 @@ const snapshots=[{id:1,captured_at:date(-2)+'T23:00:00+09:00'},{id:2,captured_at
     await page.selectOption('#snap-before','1');await page.selectOption('#snap-after','3');await page.locator('#compare').click();
     await page.waitForFunction(()=>document.querySelector('#comparison')?.textContent.includes('항목별 반영액 합계: +1,000,000원'));
     assert.deepEqual(errors,[]);
-    console.log('PASS trend details, last daily snapshot, missing day, out-of-range baseline, metrics, owners, keyboard, mobile, explicit comparison');
+    console.log('PASS trend details, all intraday snapshots, missing day, out-of-range baseline, metrics, owners, keyboard, mobile, explicit comparison');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
