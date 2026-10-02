@@ -1,4 +1,4 @@
-﻿// Synthetic API responses only; no financial writes to the running application.
+// Synthetic API responses only; no financial writes to the running application.
 const {chromium}=require('../tools/kb-card/node_modules/playwright');
 const {fixtures,expandedJsp,root}=require('./page-modules.cjs');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
@@ -10,6 +10,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://asset.test/**',async route=>{
    const r=route.request(),u=new URL(r.url()),p=u.pathname;
+   if(p==='/api/accounts')return route.fulfill({json:fixtures(u.href).map(a=>a.id===3?{...a,kisLinked:false}:a)});
    if(p==='/api/backups') {
     if(r.method()==='POST'){backupWrites++;backups=[{name:'backup-00000000-0000-0000-0000-000000000001.zip',createdAt:'2026-09-30T00:00:00Z',bytes:2048}];return route.fulfill({json:backups[0]});}
     return route.fulfill({json:{available:true,running:false,message:'백업 준비됨',backups}});
@@ -55,6 +56,14 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.goto('http://asset.test/savings');await ready();
   await page.locator('[data-action=account-adjust]').first().click();
   assert.equal(await page.locator('[name=balance]').isVisible(),true);
+  await page.goto('http://asset.test/securities#security-accounts');await ready();
+  assert.equal(await page.locator('#security-list [data-action=account-adjust]').count(),1);
+  await page.locator('#security-list [data-action=account-adjust]').click();assert.match(await page.locator('#modal-body').innerText(),/차액은 원화 예수금/);
+  await page.locator('[name=balance]').fill('2000000');await page.locator('[name=reason]').fill('비연동 증권 잔액 확인');await page.locator('#save-modal').click();await page.locator('#modal').waitFor({state:'hidden'});
+  assert.deepEqual(writes[3],{p:'/api/accounts/3/adjustments',body:{balance:'2000000',reason:'비연동 증권 잔액 확인'}});
+  await page.locator('#security-list [data-action=security-detail]').first().click();await page.locator('#modal-body [data-action=account-adjust]').waitFor();assert.equal(await page.locator('#modal-body [data-action=account-adjust]').count(),1);
+  await page.locator('#modal-body [data-action=account-adjust]').click();assert.equal(await page.locator('[name=balance]').isVisible(),true);
+  await page.locator('#close-modal').click();
   assert.deepEqual(errors,[]);
   console.log('PASS manual dividend/deposit form, USD validation, duplicate guard, KRW rate and direct cash adjustment');
  }finally{await browser.close();}

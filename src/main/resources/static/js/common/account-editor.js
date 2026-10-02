@@ -95,6 +95,6 @@ function adjustAccount(id) {
   const a=acc(id);
   if(a.status!=="ACTIVE"||a.kisLinked)throw new Error("사용 중인 비연동 계좌만 잔액을 보정할 수 있습니다.");
   modal("잔액 보정 · "+a.accountName,
-    `<p>현재 기록된 잔액은 <strong>${krw(a.currentBalanceKrw)}</strong>입니다. 차액이 아닌 실제 잔액을 입력하세요. 이전 잔액과 사유는 보정 이력에 남습니다.</p><div class="fields">${moneyField("balance","보정 후 실제 잔액 (원)",a.currentBalanceKrw)}${field("reason","보정 사유","","text",'required maxlength="1000"')}</div>`,
+    `<p>현재 기록된 잔액은 <strong>${krw(a.currentBalanceKrw)}</strong>입니다. 차액이 아닌 실제 잔액을 입력하세요. 이전 잔액과 사유는 보정 이력에 남습니다.</p>${a.assetType==="SECURITIES"?'<p class="muted">보유 종목을 포함한 계좌 총평가액을 원화로 입력하세요. 보정 차액은 원화 예수금에 반영하며, 보유 종목과 달러 예수금은 변경하지 않습니다.</p>':''}<div class="fields">${moneyField("balance",a.assetType==="SECURITIES"?"보정 후 계좌 총평가액 (원)":"보정 후 실제 잔액 (원)",a.currentBalanceKrw)}${field("reason","보정 사유","","text",'required maxlength="1000"')}</div>`,
     ()=>api("/accounts/"+id+"/adjustments","POST",formData($("#modal-body"))));
 }

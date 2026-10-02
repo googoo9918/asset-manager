@@ -60,8 +60,8 @@
     </section>
 </template>
 <%@ include file="common/footer.jspf" %>
-<script src="<c:url value='/js/common/account-editor.js'/>?v=20260930-adjust-1"></script>
-<script src="<c:url value='/js/pages/securities.js'/>"></script>
+<script src="<c:url value='/js/common/account-editor.js'/>?v=20261002-security-adjust-1"></script>
+<script src="<c:url value='/js/pages/securities.js'/>?v=20261002-security-adjust-1"></script>
 <script src="<c:url value='/js/common/stock-orders.js'/>"></script>
 <script src="<c:url value='/js/common/events.js'/>?v=20261002-allowance-link-1"></script>
 </body></html>
