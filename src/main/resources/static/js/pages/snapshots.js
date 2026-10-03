@@ -6,7 +6,9 @@ async function snapshots() {
   const options=rows.map(r=>`<option value="${r.id}">${esc(snapshotTime(r.captured_at))} (#${r.id})</option>`).join("");
   $("#snap-before").innerHTML=options; $("#snap-after").innerHTML=options;
   if(rows.length) $("#snap-after").value=rows.at(-1).id;
-  $("#snapshot-list").innerHTML=table(["저장 시각","총자산","총부채","순자산","갱신 결과","상세"],[...rows].reverse().map(r=>[esc(snapshotTime(r.captured_at)),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),esc(r.sync_status),action("snapshot-detail",r.id,"상세")]));
+  drawSnapshotHistory(rows);
+  $("#compare").disabled=rows.length<2;
+  if(rows.length>1)$("#snap-before").value=rows.at(-2).id;
   $("#compare").onclick = run(async () => {
     if (!rows.length) return;
     const owner = state.owner, container = $("#comparison");
@@ -49,3 +51,22 @@ async function snapshotDetail(id) {
 }
 
 async function renderPage() { await snapshots(); }
+
+function drawSnapshotHistory(rows){
+ const ordered=[...rows].sort((a,b)=>new Date(b.captured_at)-new Date(a.captured_at)||Number(b.id)-Number(a.id));
+ const days=new Map();for(const r of ordered){const date=snapshotTime(r.captured_at).slice(0,10);if(!days.has(date))days.set(date,[]);days.get(date).push(r);}
+ let pageIndex=0;
+ const draw=()=>{
+  const day=$('#snapshot-day').value,daily=$('#snapshot-mode').value==='daily';
+  const filtered=ordered.filter(r=>!day||snapshotTime(r.captured_at).slice(0,10)===day);
+  const grouped=[...days].filter(([date])=>!day||date===day),total=daily?grouped.length:filtered.length;
+  const pages=Math.max(1,Math.ceil(total/15));pageIndex=Math.min(pageIndex,pages-1);
+  $('#snapshot-status').textContent='전체 '+ordered.length+'회 저장 · '+days.size+'일'+(day?' · '+day+' '+filtered.length+'회':'')+(daily?' · 날짜별 마지막 기록 표시':' · 같은 날의 저장도 모두 표시');
+  const headers=daily?['날짜','저장 횟수','마지막 저장 시각','총자산','총부채','순자산','기록']:['스냅샷','저장 시각','총자산','총부채','순자산','갱신 결과','상세'];
+  const data=daily?grouped.slice(pageIndex*15,pageIndex*15+15).map(([date,list])=>{const r=list[0];return [date,list.length+'회',esc(snapshotTime(r.captured_at)),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),'<button type="button" data-snapshot-day="'+date+'">이날 기록 보기</button>'];}):filtered.slice(pageIndex*15,pageIndex*15+15).map(r=>['#'+r.id,esc(snapshotTime(r.captured_at)),krw(r.total_assets),krw(r.total_debts),krw(r.net_assets),esc(r.sync_status),action('snapshot-detail',r.id,'상세')]);
+  $('#snapshot-list').innerHTML=total?table(headers,data,[0,1,2,5,6]):emptyState('저장된 스냅샷이 없습니다.',day?'다른 날짜를 선택하거나 전체 날짜를 눌러주세요.':'상단 자산 갱신을 완료하면 새로운 스냅샷이 저장됩니다.');
+  $('#snapshot-page').textContent=(pageIndex+1)+' / '+pages+' 페이지';$('#snapshot-prev').disabled=pageIndex===0;$('#snapshot-next').disabled=pageIndex===pages-1;
+  $$('[data-snapshot-day]').forEach(b=>b.onclick=()=>{$('#snapshot-day').value=b.dataset.snapshotDay;$('#snapshot-mode').value='all';pageIndex=0;draw();});
+ };
+ $('#snapshot-mode').onchange=$('#snapshot-day').onchange=()=>{pageIndex=0;draw();};$('#snapshot-clear').onclick=()=>{$('#snapshot-day').value='';pageIndex=0;draw();};$('#snapshot-prev').onclick=()=>{pageIndex--;draw();};$('#snapshot-next').onclick=()=>{pageIndex++;draw();};draw();
+}
